@@ -859,6 +859,8 @@
       trackedByInput.addEventListener('blur', () => {
         setTimeout(() => trackedBySuggestions.classList.remove('is-open'), 140);
       });
+      fromFilter.addEventListener('change', refreshPatrolsOnly);
+      toFilter.addEventListener('change', refreshPatrolsOnly);
       setInterval(render, 60000);
 
       [searchInput, typeFilter, statusFilter, sortFilter, fromFilter, toFilter, ongoingFilter, timeWindowEnabled, timeFromFilter, timeToFilter].forEach((control) => {
@@ -895,6 +897,22 @@
         }
       }
 
+      async function refreshPatrolsOnly() {
+        state.error = null;
+        state.loading = true;
+        state.loadingMore = false;
+        state.patrols = [];
+        state.totalCount = null;
+        state.page = 0;
+        state.hasMore = true;
+        render();
+
+        await loadNextPage(false);
+
+        state.loading = false;
+        render();
+      }
+
       async function loadNextPage(shouldRender = true) {
         if (state.loadingMore || !state.hasMore) return;
 
@@ -903,14 +921,15 @@
 
         try {
           const nextPage = state.page + 1;
-          const response = await fetch(`/api/patrols?page_size=${PAGE_SIZE}&page=${nextPage}`);
+          const isRangeHarvest = hasDateRangeFilter();
+          const response = await fetch(buildPatrolRequestUrl(nextPage, isRangeHarvest));
           const json = await response.json();
           if (!response.ok) throw new Error(json.error || 'Request failed');
 
           const collection = getCollection(json);
           state.totalCount = collection.count;
-          state.page = nextPage;
-          state.hasMore = Boolean(json.data && json.data.next);
+          state.page = isRangeHarvest ? 1 : nextPage;
+          state.hasMore = isRangeHarvest ? false : Boolean(json.data && json.data.next);
           appendPatrols(collection.results);
           updateTypeOptions();
           renderTrackerSuggestions();
@@ -921,6 +940,25 @@
           state.loadingMore = false;
           if (shouldRender) render();
         }
+      }
+
+      function buildPatrolRequestUrl(nextPage, isRangeHarvest) {
+        if (!isRangeHarvest) {
+          return `/api/patrols?page_size=${PAGE_SIZE}&page=${nextPage}`;
+        }
+
+        const params = new URLSearchParams({
+          all: 'true',
+          max_pages: '50',
+          page_size: '200'
+        });
+        if (fromFilter.value) params.set('from_date', fromFilter.value);
+        if (toFilter.value) params.set('to_date', toFilter.value);
+        return `/api/patrols?${params.toString()}`;
+      }
+
+      function hasDateRangeFilter() {
+        return Boolean(fromFilter.value || toFilter.value);
       }
 
       function appendPatrols(rows) {
@@ -948,7 +986,7 @@
         timeToFilter.value = '07:00';
         renderTrackerChips();
         renderTrackerSuggestions();
-        render();
+        refreshPatrolsOnly();
       }
 
       function generateReport() {
