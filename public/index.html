@@ -656,6 +656,7 @@
 
       refreshButton.addEventListener('click', () => refreshAll());
       clearFiltersButton.addEventListener('click', clearFilters);
+      setInterval(render, 60000);
 
       [searchInput, typeFilter, statusFilter, sortFilter, fromFilter, toFilter, ongoingFilter].forEach((control) => {
         control.addEventListener('input', render);
@@ -995,8 +996,8 @@
       function totalPatrolMilliseconds(segments, fallbackStart, fallbackEnd) {
         const total = segments.reduce((sum, segment) => {
           const start = segment.time_range && segment.time_range.start_time;
-          const end = segment.time_range && segment.time_range.end_time;
-          if (!start || !end) return sum;
+          const end = (segment.time_range && segment.time_range.end_time) || new Date().toISOString();
+          if (!start) return sum;
           const duration = new Date(end).getTime() - new Date(start).getTime();
           return Number.isFinite(duration) && duration > 0 ? sum + duration : sum;
         }, 0);
@@ -1011,7 +1012,13 @@
 
       function formatHours(milliseconds) {
         if (!milliseconds || milliseconds < 0) return '-';
-        return (milliseconds / 36e5).toFixed(2);
+        const totalMinutes = Math.floor(milliseconds / 60000);
+        const hours = Math.floor(totalMinutes / 60);
+        const minutes = totalMinutes % 60;
+
+        if (hours && minutes) return `${hours}h ${minutes}m`;
+        if (hours) return `${hours}h`;
+        return `${minutes}m`;
       }
 
       function formatLabel(value) {
