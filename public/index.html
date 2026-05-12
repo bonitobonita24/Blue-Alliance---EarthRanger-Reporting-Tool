@@ -532,7 +532,11 @@
           return '<div class="empty"><strong>No records returned.</strong><p>The endpoint responded successfully with an empty result set.</p></div>';
         }
 
-        const tableRows = rows.map((item) => {
+        const sortedRows = [...rows].sort((left, right) => {
+          return Number(right.serial_number || 0) - Number(left.serial_number || 0);
+        });
+
+        const tableRows = sortedRows.map((item) => {
           const row = normalizePatrol(item);
           return `
             <tr>
