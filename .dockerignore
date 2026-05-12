@@ -1,8 +1,9 @@
-.env
-.env.local
-.env.*.local
+.git
 .vercel
 .specstory
 node_modules
 npm-debug.log*
 data
+.env
+.env.local
+.env.*.local

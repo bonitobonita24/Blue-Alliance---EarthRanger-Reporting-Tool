@@ -1,6 +1,6 @@
-# EarthRanger Reporting Tool (Vercel App)
+# EarthRanger Reporting Tool
 
-Runnable Vercel app for EarthRanger data access, including patrol retrieval and management.
+Docker-ready EarthRanger reporting app for patrol retrieval, filtering, and reporting.
 
 ## Endpoints
 - `GET /api/health` — tests connectivity using `/subjects/?page_size=1`
@@ -22,8 +22,22 @@ The app tries auth in this order:
 3. `npm install`
 4. `npm run dev`
 
-## Deploy to Vercel
-1. Push this repo to GitHub.
-2. Import project in Vercel.
-3. Add the same env vars in Vercel Project Settings.
-4. Deploy.
+## Run With Docker Desktop
+1. Make sure Docker Desktop is running.
+2. Keep your EarthRanger credentials in `.env.local`.
+3. Run `docker compose up --build`.
+4. Open `http://localhost:41739`.
+
+Use `docker compose down` to stop the local container.
+
+## Local Patrol Cache
+The Docker app saves fetched patrols to `./data/patrol-cache.json`. A background sync runs every minute and refreshes the newest patrol window plus cached patrols that are still active/open or missing an end time. By default, the newest window is 5 pages of 100 patrols, so short patrols that start and end between sync ticks are still captured as new records. Completed patrols outside that newest window remain cached and are not repeatedly synced.
+
+- `GET /api/sync-status` — inspect cache and sync status
+- `POST /api/sync-status` — run a manual sync now
+
+To backfill the local cache with the full patrol history:
+
+```bash
+docker compose exec earthranger-reporting-tool npm run cache:backfill
+```

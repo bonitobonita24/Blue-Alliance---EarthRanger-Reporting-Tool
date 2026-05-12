@@ -6,19 +6,24 @@
     <title>EarthRanger Patrol Manager</title>
     <style>
       :root {
-        --ink: #000;
-        --canvas: #fff;
-        --soft: #f7f7f5;
-        --line: #e6e6e6;
-        --lime: #dceeb1;
-        --lilac: #c5b0f4;
-        --cream: #f4ecd6;
-        --mint: #c8e6cd;
-        --pink: #efd4d4;
-        --navy: #1f1d3d;
-        --danger: #b42318;
-        --success: #1ea64a;
-        color-scheme: light;
+        --ink: #f5f1e8;
+        --canvas: #101113;
+        --soft: #1a1c20;
+        --line: #30343a;
+        --muted: #b8b2a6;
+        --muted-strong: #ddd6ca;
+        --lime: #263c28;
+        --blue: #203652;
+        --gold: #f2d78f;
+        --lilac: #33274a;
+        --cream: #3a321f;
+        --mint: #1f3b32;
+        --pink: #43262b;
+        --navy: #171624;
+        --danger: #ff6b6b;
+        --success: #38d677;
+        --surface-raised: #15171a;
+        color-scheme: dark;
         font-family:
           Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
           "Segoe UI", sans-serif;
@@ -88,66 +93,41 @@
 
       .brand p,
       .timestamp {
-        color: #575757;
+        color: var(--muted);
         font-size: 13px;
         line-height: 1.35;
         margin: 3px 0 0;
-      }
-
-      .refresh {
-        align-items: center;
-        background: var(--ink);
-        border-radius: 999px;
-        color: var(--canvas);
-        display: inline-flex;
-        flex: 0 0 auto;
-        font-size: 14px;
-        font-weight: 700;
-        gap: 8px;
-        min-height: 42px;
-        padding: 0 18px;
-      }
-
-      .refresh:disabled {
-        cursor: wait;
-        opacity: 0.64;
       }
 
       main {
         padding: clamp(16px, 4vw, 40px);
       }
 
-      .status-strip {
+      .active-overview {
         display: grid;
         gap: 12px;
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: 300px minmax(0, 1fr);
         margin-bottom: 20px;
       }
 
-      .metric {
+      .active-count-card,
+      .active-list-panel {
         border: 1px solid var(--line);
         border-radius: 8px;
-        min-height: 114px;
+        min-height: 116px;
         padding: 16px;
       }
 
-      .metric:nth-child(1) {
-        background: var(--lime);
+      .active-count-card {
+        background: var(--blue);
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        min-height: 230px;
       }
 
-      .metric:nth-child(2) {
-        background: var(--lilac);
-      }
-
-      .metric:nth-child(3) {
-        background: var(--cream);
-      }
-
-      .metric:nth-child(4) {
-        background: var(--mint);
-      }
-
-      .metric span {
+      .active-count-title,
+      .active-list-panel span {
         display: block;
         font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
         font-size: 11px;
@@ -157,30 +137,144 @@
         text-transform: uppercase;
       }
 
-      .metric strong {
+      .active-count-title {
+        font-size: 24px;
+        line-height: 1;
+      }
+
+      .active-type-grid {
+        display: grid;
+        gap: 10px;
+        grid-template-columns: 1fr 1fr;
+        margin-top: 22px;
+      }
+
+      .active-type-stat {
+        border: 1px solid rgba(245, 241, 232, 0.14);
+        border-radius: 8px;
+        padding: 10px;
+        text-align: center;
+      }
+
+      .active-type-stat span,
+      .active-total span {
+        color: var(--muted-strong);
+        display: block;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12px;
+        font-weight: 800;
+        line-height: 1;
+        text-transform: uppercase;
+      }
+
+      .active-type-stat strong {
         display: block;
         font-size: 42px;
-        line-height: 1;
-        margin-top: 16px;
+        line-height: 0.9;
+        margin-top: 12px;
+      }
+
+      .active-total {
+        border: 1px solid rgba(245, 241, 232, 0.14);
+        border-radius: 8px;
+        margin-top: 24px;
+        padding: 12px;
+        text-align: center;
+      }
+
+      .active-total span,
+      .active-total strong {
+        color: var(--gold);
+      }
+
+      .active-total strong {
+        display: block;
+        font-size: clamp(72px, 7vw, 118px);
+        font-weight: 860;
+        line-height: 0.86;
+        margin-top: 18px;
+      }
+
+      .active-list-panel {
+        background: var(--surface-raised);
+      }
+
+      .active-list-head {
+        align-items: center;
+        display: flex;
+        gap: 12px;
+        justify-content: space-between;
+        margin-bottom: 12px;
+      }
+
+      .active-list {
+        display: grid;
+        gap: 8px;
+        max-height: 220px;
+        overflow: auto;
+      }
+
+      .active-item {
+        align-items: start;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        display: grid;
+        gap: 10px;
+        grid-template-columns: 76px minmax(0, 1fr) auto;
+        padding: 10px 12px;
+      }
+
+      .active-item strong {
+        font-size: 15px;
+        line-height: 1.25;
+      }
+
+      .active-item-meta {
+        color: var(--muted);
+        display: flex;
+        flex-wrap: wrap;
+        font-size: 12px;
+        gap: 8px;
+        line-height: 1.35;
+        margin-top: 4px;
+      }
+
+      .active-empty {
+        align-content: center;
+        background: var(--soft);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        color: var(--muted-strong);
+        display: grid;
+        min-height: 76px;
+        padding: 12px;
       }
 
       .workspace {
-        align-items: start;
+        align-items: stretch;
         display: grid;
         gap: 20px;
         grid-template-columns: 280px minmax(0, 1fr);
       }
 
       .panel {
+        background: var(--surface-raised);
         border: 1px solid var(--line);
         border-radius: 8px;
         overflow: hidden;
       }
 
       .filters {
-        background: var(--canvas);
+        background: var(--surface-raised);
         position: sticky;
         top: 16px;
+      }
+
+      .patrol-panel {
+        display: flex;
+        flex-direction: column;
+        height: 100%;
+        min-height: 0;
       }
 
       .filters-body {
@@ -256,7 +350,7 @@
       }
 
       .advanced-note {
-        color: #555;
+        color: var(--muted);
         font-size: 13px;
         line-height: 1.4;
         margin: 0;
@@ -366,9 +460,38 @@
       }
 
       .list {
-        max-height: calc(100vh - 250px);
-        min-height: 390px;
-        overflow: auto;
+        flex: 1 1 0;
+        max-height: none;
+        min-height: 0;
+        overflow-x: hidden;
+        overflow-y: auto;
+      }
+
+      .list::-webkit-scrollbar:horizontal {
+        height: 0;
+      }
+
+      .table-scroll-proxy {
+        background: var(--surface-raised);
+        border: 1px solid var(--line);
+        border-radius: 8px 8px 0 0;
+        bottom: 0;
+        box-shadow: 0 -10px 24px rgba(0, 0, 0, 0.28);
+        height: 18px;
+        left: 0;
+        overflow-x: auto;
+        overflow-y: hidden;
+        position: fixed;
+        width: 0;
+        z-index: 20;
+      }
+
+      .table-scroll-proxy[hidden] {
+        display: none;
+      }
+
+      .table-scroll-proxy-inner {
+        height: 1px;
       }
 
       .data-table {
@@ -386,6 +509,7 @@
         padding: 12px 14px;
         text-align: left;
         vertical-align: top;
+        white-space: nowrap;
       }
 
       .data-table th {
@@ -413,7 +537,6 @@
         font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
         font-size: 12px;
         max-width: 210px;
-        overflow-wrap: anywhere;
       }
 
       .number-cell {
@@ -438,7 +561,7 @@
       }
 
       .load-note {
-        color: #555;
+        color: var(--muted);
         display: block;
         font-size: 13px;
         margin-top: 8px;
@@ -557,7 +680,7 @@
       }
 
       .row-meta {
-        color: #555;
+        color: var(--muted);
         display: flex;
         flex-wrap: wrap;
         font-size: 13px;
@@ -616,7 +739,7 @@
       .empty p,
       .loading p,
       .error p {
-        color: #444;
+        color: var(--muted-strong);
         font-size: 15px;
         line-height: 1.5;
         margin: 10px 0 0;
@@ -624,7 +747,7 @@
       }
 
       @media (max-width: 900px) {
-        .status-strip,
+        .active-overview,
         .workspace,
         .report-grid {
           grid-template-columns: 1fr;
@@ -643,10 +766,6 @@
           flex-direction: column;
         }
 
-        .refresh {
-          width: 100%;
-          justify-content: center;
-        }
       }
 
       @media (max-width: 560px) {
@@ -658,8 +777,12 @@
           font-size: 24px;
         }
 
-        .metric strong {
-          font-size: 30px;
+        .active-total strong {
+          font-size: clamp(72px, 24vw, 112px);
+        }
+
+        .active-item {
+          grid-template-columns: 1fr;
         }
 
         .panel-head {
@@ -687,26 +810,34 @@
             <p>Mindoro operations feed</p>
           </div>
         </div>
-        <button class="refresh" id="refreshButton" type="button">Refresh patrol index</button>
       </header>
 
       <main>
-        <section class="status-strip" aria-label="EarthRanger summary">
-          <article class="metric">
-            <span>Connection</span>
-            <strong id="connectionMetric">...</strong>
+        <section class="active-overview" aria-label="Active patrols summary">
+          <article class="active-count-card">
+            <div>
+              <span class="active-count-title">Active Patrols</span>
+              <div class="active-type-grid" aria-label="Active patrols by type">
+                <div class="active-type-stat">
+                  <span>Foot</span>
+                  <strong id="activeFootCount">...</strong>
+                </div>
+                <div class="active-type-stat">
+                  <span>Seaborne</span>
+                  <strong id="activeSeaborneCount">...</strong>
+                </div>
+              </div>
+            </div>
+            <div class="active-total">
+              <span>Total Active</span>
+              <strong id="activePatrolCount">...</strong>
+            </div>
           </article>
-          <article class="metric">
-            <span>Total Patrols</span>
-            <strong id="patrolsMetric">...</strong>
-          </article>
-          <article class="metric">
-            <span>Displayed</span>
-            <strong id="displayedMetric">...</strong>
-          </article>
-          <article class="metric">
-            <span>Last check</span>
-            <strong id="checkedMetric">...</strong>
+          <article class="active-list-panel">
+            <div class="active-list-head">
+              <p class="row-title">Active Patrols List</p>
+            </div>
+            <div class="active-list" id="activePatrolList" aria-live="polite"></div>
           </article>
         </section>
 
@@ -754,11 +885,11 @@
                 </select>
               </div>
               <div class="field">
-                <label for="fromFilter">Start date from</label>
+                <label for="fromFilter">From</label>
                 <input id="fromFilter" type="date" />
               </div>
               <div class="field">
-                <label for="toFilter">Start date to</label>
+                <label for="toFilter">To</label>
                 <input id="toFilter" type="date" />
               </div>
               <label class="checkbox-field" for="ongoingFilter">
@@ -787,15 +918,17 @@
             </div>
           </aside>
 
-          <div class="panel">
+          <div class="panel patrol-panel">
             <div class="panel-head">
               <div>
                 <p class="row-title">Patrol index</p>
                 <p class="row-meta" id="tableSummary">Patrol ID / Patrol Type / Patrol Title / Tracked By / Objective / Details / Total Hours / Start Date / End Date / Start Location / End Location</p>
               </div>
-              <div class="state-pill"><span class="dot" id="stateDot"></span><span id="stateLabel">Loading</span></div>
             </div>
             <div class="list" id="content" role="tabpanel" aria-live="polite"></div>
+            <div class="table-scroll-proxy" id="tableScrollProxy" hidden aria-label="Patrol index horizontal scroll">
+              <div class="table-scroll-proxy-inner" id="tableScrollProxyInner"></div>
+            </div>
           </div>
         </section>
 
@@ -824,7 +957,12 @@
       };
 
       const content = document.getElementById('content');
-      const refreshButton = document.getElementById('refreshButton');
+      const activePatrolCount = document.getElementById('activePatrolCount');
+      const activeFootCount = document.getElementById('activeFootCount');
+      const activeSeaborneCount = document.getElementById('activeSeaborneCount');
+      const activePatrolList = document.getElementById('activePatrolList');
+      const tableScrollProxy = document.getElementById('tableScrollProxy');
+      const tableScrollProxyInner = document.getElementById('tableScrollProxyInner');
       const stateDot = document.getElementById('stateDot');
       const stateLabel = document.getElementById('stateLabel');
       const tableSummary = document.getElementById('tableSummary');
@@ -852,7 +990,25 @@
         rootMargin: '240px'
       });
 
-      refreshButton.addEventListener('click', () => refreshAll());
+      let syncingTableScroll = false;
+
+      content.addEventListener('scroll', () => {
+        if (syncingTableScroll || tableScrollProxy.hidden) return;
+        syncingTableScroll = true;
+        tableScrollProxy.scrollLeft = content.scrollLeft;
+        syncingTableScroll = false;
+      });
+
+      tableScrollProxy.addEventListener('scroll', () => {
+        if (syncingTableScroll) return;
+        syncingTableScroll = true;
+        content.scrollLeft = tableScrollProxy.scrollLeft;
+        syncingTableScroll = false;
+      });
+
+      window.addEventListener('resize', syncTableScrollProxy);
+      window.addEventListener('scroll', syncTableScrollProxy, { passive: true });
+
       generateReportButton.addEventListener('click', generateReport);
       clearFiltersButton.addEventListener('click', clearFilters);
       trackedByInput.addEventListener('input', renderTrackerSuggestions);
@@ -860,15 +1016,14 @@
       trackedByInput.addEventListener('blur', () => {
         setTimeout(() => trackedBySuggestions.classList.remove('is-open'), 140);
       });
-      fromFilter.addEventListener('change', refreshPatrolsOnly);
-      toFilter.addEventListener('change', refreshPatrolsOnly);
-      setInterval(render, 60000);
+      setInterval(autoRefreshPatrols, 60000);
 
       [searchInput, typeFilter, statusFilter, sortFilter, fromFilter, toFilter, ongoingFilter, timeWindowEnabled, timeFromFilter, timeToFilter].forEach((control) => {
         control.addEventListener('input', render);
         control.addEventListener('change', render);
       });
 
+      setDefaultDateRange();
       refreshAll();
 
       async function refreshAll() {
@@ -882,7 +1037,8 @@
         state.hasMore = true;
         render();
 
-        await Promise.all([loadHealth(), loadNextPage(false)]);
+        await Promise.all([loadHealth(), loadCachedPatrols(false)]);
+        if (!state.patrols.length) await loadNextPage(false);
 
         state.loading = false;
         render();
@@ -910,14 +1066,19 @@
         state.hasMore = true;
         render();
 
-        if (hasDateRangeFilter()) {
-          await harvestDateRangePatrols(false);
-        } else {
-          await loadNextPage(false);
-        }
+        await loadCachedPatrols(false);
+        if (!state.patrols.length) await loadNextPage(false);
 
         state.loading = false;
         render();
+      }
+
+      async function autoRefreshPatrols() {
+        if (state.loading || state.loadingMore || state.rangeHarvesting) return;
+        const scrollPosition = getTableScrollPosition();
+        await loadCachedPatrols(false, { updatePage: false });
+        render();
+        restoreTableScrollPosition(scrollPosition);
       }
 
       async function harvestDateRangePatrols(shouldRender = true) {
@@ -981,18 +1142,56 @@
         }
       }
 
+      async function loadCachedPatrols(shouldRender = true, options = {}) {
+        const { updatePage = true } = options;
+
+        try {
+          const response = await fetch('/api/patrols?source=cache&page_size=10000&page=1&sort_by=-start_time');
+          const json = await response.json();
+          if (!response.ok) throw new Error(json.error || 'Request failed');
+
+          const collection = getCollection(json);
+          state.totalCount = collection.count;
+          if (updatePage) state.page = Math.ceil(collection.count / PAGE_SIZE);
+          state.hasMore = true;
+          appendPatrols(collection.results);
+          updateTypeOptions();
+          renderTrackerSuggestions();
+        } catch (error) {
+          console.warn(`Cached patrol load failed: ${error.message}`);
+        } finally {
+          if (shouldRender) render();
+        }
+      }
+
       function hasDateRangeFilter() {
         return Boolean(fromFilter.value || toFilter.value);
       }
 
+      function setDefaultDateRange() {
+        const today = new Date();
+        const from = new Date(today);
+        from.setDate(today.getDate() - 6);
+
+        fromFilter.value = localDateKey(from);
+        toFilter.value = localDateKey(today);
+      }
+
       function appendPatrols(rows) {
-        const seen = new Set(state.patrols.map((item) => item.id));
+        const seen = new Map(state.patrols.map((item, index) => [getPatrolIdentity(item), index]));
         rows.forEach((item) => {
-          if (!seen.has(item.id)) {
+          const identity = getPatrolIdentity(item);
+          if (seen.has(identity)) {
+            state.patrols[seen.get(identity)] = item;
+          } else {
             state.patrols.push(item);
-            seen.add(item.id);
+            seen.set(identity, state.patrols.length - 1);
           }
         });
+      }
+
+      function getPatrolIdentity(item) {
+        return String(item.id || item.serial_number || '');
       }
 
       function clearFilters() {
@@ -1193,31 +1392,139 @@
         const filters = getFilters();
         const visibleRows = getVisiblePatrols();
         const filtered = hasRestrictiveFilters(filters);
+        const activePatrols = getActivePatrols();
+        const activeTypeCounts = getActiveTypeCounts(activePatrols);
 
-        refreshButton.disabled = state.loading || state.loadingMore;
-        document.getElementById('connectionMetric').textContent = isConnected ? 'Live' : hasError ? 'Error' : '...';
-        document.getElementById('patrolsMetric').textContent = formatCount(state.totalCount);
-        document.getElementById('displayedMetric').textContent = formatCount(visibleRows.length);
-        document.getElementById('checkedMetric').textContent = formatTime(state.health && state.health.checkedAt);
-        tableSummary.textContent = filtered
-          ? `${visibleRows.length.toLocaleString()} shown / ${state.patrols.length.toLocaleString()} loaded. ${state.rangeHarvesting ? `Harvesting date range, page ${state.page + 1}...` : 'Filtered results pause auto-loading.'}`
-          : `${visibleRows.length.toLocaleString()} shown / ${state.patrols.length.toLocaleString()} loaded. Scroll the table to keep loading older patrols.`;
+        activePatrolCount.textContent = formatCount(activePatrols.length);
+        activeFootCount.textContent = formatCount(activeTypeCounts.foot);
+        activeSeaborneCount.textContent = formatCount(activeTypeCounts.seaborne);
+        activePatrolList.innerHTML = renderActivePatrolList(activePatrols);
+        tableSummary.textContent = formatResultSummary(visibleRows.length, filters);
 
-        stateDot.classList.toggle('error', hasError || !isConnected);
-        stateLabel.textContent = state.rangeHarvesting ? 'Harvesting range' : state.loading ? 'Loading' : state.loadingMore ? 'Loading more' : isConnected ? 'Connected' : 'Needs attention';
+        if (stateDot) stateDot.classList.toggle('error', hasError || !isConnected);
+        if (stateLabel) stateLabel.textContent = state.rangeHarvesting ? 'Harvesting range' : state.loading ? 'Loading' : state.loadingMore ? 'Loading more' : isConnected ? 'Connected' : 'Needs attention';
 
         if (state.loading && !state.patrols.length) {
           content.innerHTML = loadingMarkup();
+          syncTableScrollProxy();
           return;
         }
 
         if (state.error && !state.patrols.length) {
           content.innerHTML = errorMarkup(state.error);
+          syncTableScrollProxy();
           return;
         }
 
         content.innerHTML = renderPatrolTable(visibleRows);
         observeLoadTrigger(filtered);
+        syncTableScrollProxy();
+      }
+
+      function syncTableScrollProxy() {
+        requestAnimationFrame(() => {
+          const table = content.querySelector('.data-table');
+          const shouldShow = Boolean(table && table.scrollWidth > content.clientWidth);
+          tableScrollProxy.hidden = !shouldShow;
+          if (!shouldShow) {
+            tableScrollProxyInner.style.width = '0px';
+            tableScrollProxy.style.left = '0px';
+            tableScrollProxy.style.width = '0px';
+            return;
+          }
+
+          const rect = content.getBoundingClientRect();
+          const left = Math.max(rect.left, 0);
+          const right = Math.min(rect.right, window.innerWidth);
+          const width = Math.max(right - left, 0);
+
+          tableScrollProxy.style.left = `${left}px`;
+          tableScrollProxy.style.width = `${width}px`;
+          tableScrollProxyInner.style.width = `${table.scrollWidth}px`;
+          tableScrollProxy.scrollLeft = content.scrollLeft;
+        });
+      }
+
+      function getTableScrollPosition() {
+        return {
+          left: content.scrollLeft,
+          top: content.scrollTop
+        };
+      }
+
+      function restoreTableScrollPosition(position) {
+        requestAnimationFrame(() => {
+          content.scrollTop = position.top;
+          content.scrollLeft = position.left;
+          tableScrollProxy.scrollLeft = position.left;
+          syncTableScrollProxy();
+        });
+      }
+
+      function formatResultSummary(count, filters) {
+        const range = formatSelectedDateRange(filters);
+        return `${count.toLocaleString()} results${range ? ` from ${range}` : ''}`;
+      }
+
+      function formatSelectedDateRange(filters) {
+        if (!filters.from && !filters.to) return '';
+        const from = filters.from ? formatDateOnly(filters.from) : 'the beginning';
+        const to = filters.to ? formatDateOnly(filters.to) : 'now';
+        return `${from} to ${to}`;
+      }
+
+      function formatDateOnly(value) {
+        const date = new Date(`${value}T00:00:00`);
+        if (Number.isNaN(date.getTime())) return value;
+        return date.toLocaleDateString([], {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric'
+        });
+      }
+
+      function getActivePatrols() {
+        return state.patrols
+          .filter((item) => isOngoingPatrol(item))
+          .sort((left, right) => comparePatrols(left, right, 'start_desc'));
+      }
+
+      function getActiveTypeCounts(rows) {
+        return rows.reduce((counts, item) => {
+          const patrolType = normalizePatrol(item).patrolType.toLowerCase();
+          if (patrolType.includes('foot')) counts.foot += 1;
+          if (patrolType.includes('sea')) counts.seaborne += 1;
+          return counts;
+        }, { foot: 0, seaborne: 0 });
+      }
+
+      function renderActivePatrolList(rows) {
+        if (state.loading && !state.patrols.length) {
+          return '<div class="active-empty">Loading active patrols...</div>';
+        }
+
+        if (!rows.length) {
+          return '<div class="active-empty">No active ongoing patrols in the loaded patrol data.</div>';
+        }
+
+        return rows.map((item) => {
+          const row = normalizePatrol(item);
+          return `
+            <div class="active-item">
+              <div class="id-cell">${escapeHtml(row.patrolId)}</div>
+              <div>
+                <strong>${escapeHtml(row.patrolTitle)}</strong>
+                <div class="active-item-meta">
+                  <span>${escapeHtml(row.patrolType)}</span>
+                  <span>${escapeHtml(row.totalHours)}</span>
+                  <span>${escapeHtml(row.startDate)}</span>
+                  <span>${escapeHtml(row.trackedBy)}</span>
+                </div>
+              </div>
+              <span class="badge active">Active</span>
+            </div>
+          `;
+        }).join('');
       }
 
       function renderPatrolTable(rows) {
@@ -1491,6 +1798,9 @@
       }
 
       function isOngoingPatrol(item) {
+        const state = String(item.state || '').toLowerCase();
+        if (!['open', 'active'].includes(state)) return false;
+
         const segments = Array.isArray(item.patrol_segments) ? item.patrol_segments : [];
         return segments.some((segment) => {
           return segment.time_range && segment.time_range.start_time && !segment.time_range.end_time;
@@ -1689,6 +1999,7 @@
         const date = new Date(value);
         if (Number.isNaN(date.getTime())) return '';
         return date.toLocaleString([], {
+          year: 'numeric',
           month: 'short',
           day: 'numeric',
           hour: '2-digit',

@@ -1,0 +1,65 @@
+{
+  "scannedAt": "2026-05-13",
+  "techStack": ["Node.js 22", "Vanilla JavaScript (ESM)", "node:http", "Docker"],
+  "projectType": "full-stack",
+  "installedSkills": [
+    {
+      "name": "owasp-security",
+      "category": "Security & Testing",
+      "tier": "T2",
+      "reason": "Web app with auth tokens, .env secrets, API proxy pattern"
+    },
+    {
+      "name": "varlock-claude-skill",
+      "category": "Security & Testing",
+      "tier": "T2",
+      "reason": ".env.local with ER_TOKEN, ER_PASSWORD, DAS_WEB_TOKEN secrets"
+    },
+    {
+      "name": "webapp-testing",
+      "category": "Security & Testing",
+      "tier": "T2",
+      "reason": "Web app with localhost dev server, no test suite exists"
+    },
+    {
+      "name": "planning-with-files",
+      "category": "Development & DevOps",
+      "tier": "T4",
+      "reason": "Persistent task plans for multi-step work across sessions"
+    },
+    {
+      "name": "design-auditor",
+      "category": "Design & UI",
+      "tier": "T4",
+      "reason": "Single-file SPA with ~800 lines CSS, can audit design quality"
+    },
+    {
+      "name": "frontend-design",
+      "category": "Design & UI",
+      "tier": "T4",
+      "reason": "Dashboard UI in index.html for future frontend improvements"
+    }
+  ],
+  "pluginSkills": [
+    {
+      "name": "fullstack-dev-skills:javascript-pro",
+      "tier": "T1",
+      "reason": "Entire codebase is vanilla JS (ESM)"
+    },
+    {
+      "name": "fullstack-dev-skills:api-designer",
+      "tier": "T2",
+      "reason": "5 hand-rolled REST API endpoints in api/ directory"
+    },
+    {
+      "name": "docker-expert (subagent)",
+      "tier": "T2",
+      "reason": "Dockerfile + docker-compose.yml, Docker Compose deployment target"
+    }
+  ],
+  "excludedGlobals": [],
+  "resolvedConflicts": [],
+  "recommendedPlugins": [],
+  "skippedOptional": [],
+  "globalCleanupAdvised": false
+}

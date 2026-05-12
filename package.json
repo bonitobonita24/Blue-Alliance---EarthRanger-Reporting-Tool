@@ -4,8 +4,11 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "dev": "vercel dev",
-    "start": "vercel dev"
+    "dev": "node server.js",
+    "start": "node server.js",
+    "cache:backfill": "node scripts/backfill-patrol-cache.js",
+    "docker:up": "docker compose up --build",
+    "docker:down": "docker compose down"
   },
   "engines": {
     "node": ">=20"

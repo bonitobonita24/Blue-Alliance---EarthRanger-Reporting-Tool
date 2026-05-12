@@ -1,0 +1,19 @@
+name: blue-alliance-earthranger-reporting-tool
+
+services:
+  earthranger-reporting-tool:
+    build: .
+    container_name: blue-alliance-earthranger-reporting-tool-app
+    env_file:
+      - .env.local
+    environment:
+      PORT: 41739
+      PATROL_CACHE_PATH: /app/data/patrol-cache.json
+      PATROL_SYNC_INTERVAL_MS: 60000
+      PATROL_SYNC_LATEST_PAGE_SIZE: 100
+      PATROL_SYNC_LATEST_PAGES: 5
+    ports:
+      - "41739:41739"
+    volumes:
+      - ./data:/app/data
+    restart: unless-stopped
