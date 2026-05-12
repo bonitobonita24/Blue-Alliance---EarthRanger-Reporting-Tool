@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EarthRanger Patrol Manager</title>
+  </head>
+  <body style="font-family: Arial, sans-serif; margin: 2rem;">
+    <h1>EarthRanger Patrol Manager</h1>
+    <button onclick="run('/api/health')">Health</button>
+    <button onclick="run('/api/events?page_size=10')">Events</button>
+    <button onclick="run('/api/patrols?page_size=10')">Patrols</button>
+    <pre id="out" style="background:#111;color:#0f0;padding:1rem;border-radius:8px;">Click a button...</pre>
+    <script>
+      async function run(path) {
+        const out = document.getElementById('out');
+        out.textContent = 'Loading ' + path;
+        const res = await fetch(path);
+        const json = await res.json();
+        out.textContent = JSON.stringify(json, null, 2);
+      }
+    </script>
+  </body>
+</html>
