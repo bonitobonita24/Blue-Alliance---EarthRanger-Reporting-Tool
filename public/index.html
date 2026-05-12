@@ -577,10 +577,10 @@
               <div class="field">
                 <label for="sortFilter">Sort</label>
                 <select id="sortFilter">
-                  <option value="latest">Latest patrol ID first</option>
-                  <option value="oldest">Oldest patrol ID first</option>
                   <option value="start_desc">Newest start date first</option>
                   <option value="start_asc">Oldest start date first</option>
+                  <option value="latest">Latest patrol ID first</option>
+                  <option value="oldest">Oldest patrol ID first</option>
                 </select>
               </div>
               <div class="field">
@@ -732,7 +732,7 @@
         searchInput.value = '';
         typeFilter.value = '';
         statusFilter.value = '';
-        sortFilter.value = 'latest';
+        sortFilter.value = 'start_desc';
         fromFilter.value = '';
         toFilter.value = '';
         ongoingFilter.checked = false;
