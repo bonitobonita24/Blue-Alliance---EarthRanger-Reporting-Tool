@@ -584,7 +584,7 @@
         );
 
         return {
-          patrolId: item.id || '-',
+          patrolId: item.serial_number || item.id || '-',
           patrolType: formatLabel(firstValue(firstSegment.patrol_type, item.patrol_type, item.type)),
           patrolTitle: firstValue(item.title, item.objective, item.serial_number ? `Patrol ${item.serial_number}` : ''),
           totalHours: formatHours(totalPatrolMilliseconds(segments, startTime, endTime)),
