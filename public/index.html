@@ -1092,8 +1092,13 @@
           let hasNext = true;
           const maxPages = 50;
 
+          const params = new URLSearchParams({ page_size: '200', page: '1', sort_by: '-serial_number' });
+          if (fromFilter.value) params.set('since', `${fromFilter.value}T00:00:00`);
+          if (toFilter.value) params.set('until', `${toFilter.value}T23:59:59`);
+
           while (hasNext && page <= maxPages) {
-            const response = await fetch(`/api/patrols?page_size=200&page=${page}`);
+            params.set('page', String(page));
+            const response = await fetch(`/api/patrols?${params}`);
             const json = await response.json();
             if (!response.ok) throw new Error(json.error || 'Request failed');
 
@@ -1813,8 +1818,7 @@
         const value = firstValue(
           firstSegment.time_range && firstSegment.time_range.start_time,
           firstSegment.scheduled_start,
-          item.start_time,
-          latestUpdateTime(item)
+          item.start_time
         );
         if (!value || value === '-') return null;
         const date = new Date(value);

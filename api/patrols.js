@@ -87,7 +87,7 @@ function comparePatrols(left, right, sortBy) {
 function getPatrolStartDate(patrol) {
   const segments = Array.isArray(patrol.patrol_segments) ? patrol.patrol_segments : [];
   const firstSegment = segments[0] || {};
-  const value = firstSegment.time_range?.start_time || firstSegment.scheduled_start || patrol.start_time || patrol.updates?.[0]?.time;
+  const value = firstSegment.time_range?.start_time || firstSegment.scheduled_start || patrol.start_time;
   const date = value ? new Date(value) : null;
   return date && !Number.isNaN(date.getTime()) ? date.getTime() : 0;
 }
