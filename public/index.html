@@ -622,7 +622,7 @@
                   <input id="timeToFilter" type="time" value="07:00" />
                 </div>
               </div>
-              <p class="advanced-note">Daily overnight window across the selected date range.</p>
+              <p class="advanced-note">Uses each patrol's actual start date and time.</p>
               <div class="filter-actions">
                 <button class="secondary-button" id="clearFiltersButton" type="button">Clear filters</button>
               </div>
@@ -1057,24 +1057,16 @@
         const fromMinutes = timeToMinutes(filters.timeFrom);
         const toMinutes = timeToMinutes(filters.timeTo);
         const startMinutes = startDate.getHours() * 60 + startDate.getMinutes();
+        const startDateKey = localDateKey(startDate);
 
         if (fromMinutes === null || toMinutes === null) return false;
+        if (!isDateInSelectedRange(startDateKey, filters.from, filters.to)) return false;
 
         if (fromMinutes <= toMinutes) {
-          return isDateInSelectedRange(localDateKey(startDate), filters.from, filters.to)
-            && startMinutes >= fromMinutes
-            && startMinutes <= toMinutes;
+          return startMinutes >= fromMinutes && startMinutes <= toMinutes;
         }
 
-        if (startMinutes >= fromMinutes) {
-          return isDateInSelectedRange(localDateKey(startDate), filters.from, filters.to);
-        }
-
-        if (startMinutes <= toMinutes) {
-          return isDateInSelectedRange(localDateKey(addDays(startDate, -1)), filters.from, filters.to);
-        }
-
-        return false;
+        return startMinutes >= fromMinutes || startMinutes <= toMinutes;
       }
 
       function timeToMinutes(value) {
@@ -1094,12 +1086,6 @@
         const month = String(date.getMonth() + 1).padStart(2, '0');
         const day = String(date.getDate()).padStart(2, '0');
         return `${year}-${month}-${day}`;
-      }
-
-      function addDays(date, days) {
-        const next = new Date(date);
-        next.setDate(next.getDate() + days);
-        return next;
       }
 
       function firstValue(...values) {
