@@ -4,40 +4,674 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>EarthRanger Patrol Manager</title>
-  </head>
-  <body style="font-family: Arial, sans-serif; margin: 2rem;">
-    <h1>EarthRanger Patrol Manager</h1>
-    <button onclick="run('/api/health')">Health</button>
-    <button onclick="run('/api/events?page_size=10')">Events</button>
-    <button onclick="run('/api/patrols?page_size=10')">Patrols</button>
-    <pre id="out" style="background:#111;color:#0f0;padding:1rem;border-radius:8px;white-space:pre-wrap;">Click a button...</pre>
-    <script>
-      async function run(path) {
-        const out = document.getElementById('out');
-        out.textContent = 'Loading ' + path;
-        try {
-          const res = await fetch(path);
-          const json = await res.json();
+    <style>
+      :root {
+        --ink: #000;
+        --canvas: #fff;
+        --soft: #f7f7f5;
+        --line: #e6e6e6;
+        --lime: #dceeb1;
+        --lilac: #c5b0f4;
+        --cream: #f4ecd6;
+        --mint: #c8e6cd;
+        --pink: #efd4d4;
+        --navy: #1f1d3d;
+        --danger: #b42318;
+        --success: #1ea64a;
+        color-scheme: light;
+        font-family:
+          Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont,
+          "Segoe UI", sans-serif;
+      }
 
-          if (json.error && json.error.includes('Missing auth')) {
-            out.textContent = [
-              'EarthRanger credentials are not configured in Vercel yet.',
-              '',
-              'Add one of these auth options to the Vercel project environment variables:',
-              '- ER_TOKEN',
-              '- ER_TRACK_TOKEN',
-              '- DAS_WEB_TOKEN',
-              '- or ER_USERNAME and ER_PASSWORD',
-              '',
-              'Then redeploy the project.'
-            ].join('\n');
-            return;
-          }
+      * {
+        box-sizing: border-box;
+      }
 
-          out.textContent = JSON.stringify(json, null, 2);
-        } catch (error) {
-          out.textContent = 'Request failed: ' + error.message;
+      body {
+        margin: 0;
+        background: var(--canvas);
+        color: var(--ink);
+      }
+
+      button {
+        border: 0;
+        color: inherit;
+        cursor: pointer;
+        font: inherit;
+      }
+
+      .app {
+        min-height: 100vh;
+        display: grid;
+        grid-template-rows: auto 1fr;
+      }
+
+      .topbar {
+        align-items: center;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        gap: 18px;
+        justify-content: space-between;
+        min-height: 64px;
+        padding: 12px clamp(16px, 4vw, 40px);
+      }
+
+      .brand {
+        align-items: center;
+        display: flex;
+        gap: 12px;
+        min-width: 0;
+      }
+
+      .brand-mark {
+        align-items: center;
+        background: var(--ink);
+        border-radius: 8px;
+        color: var(--canvas);
+        display: grid;
+        flex: 0 0 auto;
+        font-size: 13px;
+        font-weight: 800;
+        height: 38px;
+        justify-items: center;
+        line-height: 1;
+        width: 38px;
+      }
+
+      .brand h1 {
+        font-size: 30px;
+        font-weight: 760;
+        line-height: 1.05;
+        margin: 0;
+      }
+
+      .brand p,
+      .timestamp {
+        color: #575757;
+        font-size: 13px;
+        line-height: 1.35;
+        margin: 3px 0 0;
+      }
+
+      .refresh {
+        align-items: center;
+        background: var(--ink);
+        border-radius: 999px;
+        color: var(--canvas);
+        display: inline-flex;
+        flex: 0 0 auto;
+        font-size: 14px;
+        font-weight: 700;
+        gap: 8px;
+        min-height: 42px;
+        padding: 0 18px;
+      }
+
+      .refresh:disabled {
+        cursor: wait;
+        opacity: 0.64;
+      }
+
+      main {
+        padding: clamp(16px, 4vw, 40px);
+      }
+
+      .status-strip {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        margin-bottom: 20px;
+      }
+
+      .metric {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        min-height: 114px;
+        padding: 16px;
+      }
+
+      .metric:nth-child(1) {
+        background: var(--lime);
+      }
+
+      .metric:nth-child(2) {
+        background: var(--lilac);
+      }
+
+      .metric:nth-child(3) {
+        background: var(--cream);
+      }
+
+      .metric:nth-child(4) {
+        background: var(--mint);
+      }
+
+      .metric span {
+        display: block;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0;
+        line-height: 1.2;
+        text-transform: uppercase;
+      }
+
+      .metric strong {
+        display: block;
+        font-size: 42px;
+        line-height: 1;
+        margin-top: 16px;
+      }
+
+      .workspace {
+        display: grid;
+        gap: 20px;
+        grid-template-columns: minmax(0, 1.35fr) minmax(320px, 0.65fr);
+      }
+
+      .panel {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        overflow: hidden;
+      }
+
+      .panel-head {
+        align-items: center;
+        border-bottom: 1px solid var(--line);
+        display: flex;
+        gap: 12px;
+        justify-content: space-between;
+        min-height: 64px;
+        padding: 12px;
+      }
+
+      .tabs {
+        background: var(--soft);
+        border-radius: 999px;
+        display: inline-grid;
+        gap: 4px;
+        grid-template-columns: repeat(3, minmax(82px, 1fr));
+        padding: 4px;
+      }
+
+      .tab {
+        background: transparent;
+        border-radius: 999px;
+        font-size: 14px;
+        font-weight: 750;
+        min-height: 36px;
+        padding: 0 14px;
+      }
+
+      .tab[aria-selected="true"] {
+        background: var(--ink);
+        color: var(--canvas);
+      }
+
+      .state-pill {
+        align-items: center;
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        display: inline-flex;
+        font-size: 13px;
+        font-weight: 700;
+        gap: 8px;
+        min-height: 36px;
+        padding: 0 12px;
+      }
+
+      .dot {
+        background: var(--success);
+        border-radius: 999px;
+        height: 8px;
+        width: 8px;
+      }
+
+      .dot.error {
+        background: var(--danger);
+      }
+
+      .list {
+        display: grid;
+        gap: 1px;
+        min-height: 390px;
+      }
+
+      .row {
+        background: var(--canvas);
+        border-bottom: 1px solid var(--line);
+        display: grid;
+        gap: 12px;
+        grid-template-columns: minmax(0, 1fr) auto;
+        padding: 18px;
+      }
+
+      .row:last-child {
+        border-bottom: 0;
+      }
+
+      .row:hover {
+        background: var(--soft);
+      }
+
+      .row-title {
+        font-size: 18px;
+        font-weight: 780;
+        line-height: 1.25;
+        margin: 0;
+      }
+
+      .row-meta {
+        color: #555;
+        display: flex;
+        flex-wrap: wrap;
+        font-size: 13px;
+        gap: 8px;
+        line-height: 1.35;
+        margin: 8px 0 0;
+      }
+
+      .badge {
+        background: var(--soft);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        display: inline-flex;
+        font-size: 12px;
+        font-weight: 800;
+        justify-content: center;
+        line-height: 1;
+        min-width: 82px;
+        padding: 8px 10px;
+        text-transform: uppercase;
+      }
+
+      .badge.amber {
+        background: var(--cream);
+      }
+
+      .badge.active,
+      .badge.open {
+        background: var(--mint);
+      }
+
+      .empty,
+      .loading,
+      .error {
+        align-content: center;
+        display: grid;
+        min-height: 390px;
+        padding: 24px;
+      }
+
+      .loading {
+        background: var(--soft);
+      }
+
+      .error {
+        background: var(--pink);
+      }
+
+      .empty strong,
+      .loading strong,
+      .error strong {
+        font-size: 22px;
+        line-height: 1.2;
+      }
+
+      .empty p,
+      .loading p,
+      .error p {
+        color: #444;
+        font-size: 15px;
+        line-height: 1.5;
+        margin: 10px 0 0;
+        max-width: 620px;
+      }
+
+      .details {
+        background: var(--navy);
+        color: var(--canvas);
+      }
+
+      .details .panel-head {
+        border-color: rgba(255, 255, 255, 0.16);
+      }
+
+      .details h2 {
+        font-size: 15px;
+        line-height: 1.2;
+        margin: 0;
+      }
+
+      pre {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 12px;
+        line-height: 1.55;
+        margin: 0;
+        max-height: 516px;
+        overflow: auto;
+        padding: 18px;
+        white-space: pre-wrap;
+      }
+
+      @media (max-width: 900px) {
+        .status-strip,
+        .workspace {
+          grid-template-columns: 1fr;
         }
+
+        .topbar {
+          align-items: flex-start;
+          flex-direction: column;
+        }
+
+        .refresh {
+          width: 100%;
+          justify-content: center;
+        }
+      }
+
+      @media (max-width: 560px) {
+        main {
+          padding: 12px;
+        }
+
+        .brand h1 {
+          font-size: 24px;
+        }
+
+        .metric strong {
+          font-size: 30px;
+        }
+
+        .panel-head {
+          align-items: stretch;
+          flex-direction: column;
+        }
+
+        .tabs {
+          grid-template-columns: 1fr;
+          width: 100%;
+        }
+
+        .row {
+          grid-template-columns: 1fr;
+        }
+
+        .badge {
+          width: max-content;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <header class="topbar">
+        <div class="brand">
+          <div class="brand-mark">ER</div>
+          <div>
+            <h1>EarthRanger Patrol Manager</h1>
+            <p>Mindoro operations feed</p>
+          </div>
+        </div>
+        <button class="refresh" id="refreshButton" type="button">Refresh data</button>
+      </header>
+
+      <main>
+        <section class="status-strip" aria-label="EarthRanger summary">
+          <article class="metric">
+            <span>Connection</span>
+            <strong id="connectionMetric">...</strong>
+          </article>
+          <article class="metric">
+            <span>Events</span>
+            <strong id="eventsMetric">...</strong>
+          </article>
+          <article class="metric">
+            <span>Patrols</span>
+            <strong id="patrolsMetric">...</strong>
+          </article>
+          <article class="metric">
+            <span>Last check</span>
+            <strong id="checkedMetric">...</strong>
+          </article>
+        </section>
+
+        <section class="workspace">
+          <div class="panel">
+            <div class="panel-head">
+              <div class="tabs" role="tablist" aria-label="Data views">
+                <button class="tab" id="tab-health" type="button" role="tab" aria-selected="true" data-view="health">Health</button>
+                <button class="tab" id="tab-events" type="button" role="tab" aria-selected="false" data-view="events">Events</button>
+                <button class="tab" id="tab-patrols" type="button" role="tab" aria-selected="false" data-view="patrols">Patrols</button>
+              </div>
+              <div class="state-pill"><span class="dot" id="stateDot"></span><span id="stateLabel">Loading</span></div>
+            </div>
+            <div class="list" id="content" role="tabpanel" aria-live="polite"></div>
+          </div>
+
+          <aside class="panel details">
+            <div class="panel-head">
+              <h2>Selected response</h2>
+              <span class="timestamp" id="timestamp">...</span>
+            </div>
+            <pre id="rawOutput">{}</pre>
+          </aside>
+        </section>
+      </main>
+    </div>
+
+    <script>
+      const state = {
+        activeView: 'health',
+        loading: false,
+        health: null,
+        events: null,
+        patrols: null,
+        error: null
+      };
+
+      const endpoints = {
+        health: '/api/health',
+        events: '/api/events?page_size=10',
+        patrols: '/api/patrols?page_size=10'
+      };
+
+      const content = document.getElementById('content');
+      const rawOutput = document.getElementById('rawOutput');
+      const refreshButton = document.getElementById('refreshButton');
+      const stateDot = document.getElementById('stateDot');
+      const stateLabel = document.getElementById('stateLabel');
+
+      document.querySelectorAll('.tab').forEach((button) => {
+        button.addEventListener('click', () => {
+          state.activeView = button.dataset.view;
+          render();
+          if (!state[state.activeView]) loadView(state.activeView);
+        });
+      });
+
+      refreshButton.addEventListener('click', () => refreshAll());
+
+      refreshAll();
+
+      async function refreshAll() {
+        state.error = null;
+        state.loading = true;
+        render();
+
+        await Promise.all(['health', 'events', 'patrols'].map((view) => loadView(view, false)));
+
+        state.loading = false;
+        render();
+      }
+
+      async function loadView(view, shouldRender = true) {
+        if (shouldRender) {
+          state.loading = true;
+          render();
+        }
+
+        try {
+          const response = await fetch(endpoints[view]);
+          const json = await response.json();
+          state[view] = json;
+          if (!response.ok) throw new Error(json.error || 'Request failed');
+        } catch (error) {
+          state.error = error.message;
+        } finally {
+          if (shouldRender) {
+            state.loading = false;
+            render();
+          }
+        }
+      }
+
+      function render() {
+        const selected = state[state.activeView];
+        const hasError = Boolean(state.error);
+        const isConnected = Boolean(state.health && state.health.ok);
+
+        refreshButton.disabled = state.loading;
+        document.getElementById('connectionMetric').textContent = isConnected ? 'Live' : hasError ? 'Error' : '...';
+        document.getElementById('eventsMetric').textContent = formatCount(getCollection(state.events).count);
+        document.getElementById('patrolsMetric').textContent = formatCount(getCollection(state.patrols).count);
+        document.getElementById('checkedMetric').textContent = formatTime(state.health && state.health.checkedAt);
+        document.getElementById('timestamp').textContent = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        stateDot.classList.toggle('error', hasError || !isConnected);
+        stateLabel.textContent = state.loading ? 'Loading' : isConnected ? 'Connected' : 'Needs attention';
+
+        document.querySelectorAll('.tab').forEach((button) => {
+          const active = button.dataset.view === state.activeView;
+          button.setAttribute('aria-selected', String(active));
+          button.tabIndex = active ? 0 : -1;
+        });
+
+        if (state.loading && !selected) {
+          content.innerHTML = loadingMarkup();
+          rawOutput.textContent = '{}';
+          return;
+        }
+
+        if (state.error && !selected) {
+          content.innerHTML = errorMarkup(state.error);
+          rawOutput.textContent = JSON.stringify({ error: state.error }, null, 2);
+          return;
+        }
+
+        content.innerHTML = renderView(state.activeView, selected);
+        rawOutput.textContent = JSON.stringify(selected || {}, null, 2);
+      }
+
+      function renderView(view, payload) {
+        if (!payload) return loadingMarkup();
+        if (payload.error) return errorMarkup(payload.error);
+        if (view === 'health') return renderHealth(payload);
+        return renderRows(view, getCollection(payload).results);
+      }
+
+      function renderHealth(payload) {
+        const rows = [
+          ['EarthRanger reachable', payload.earthrangerReachable ? 'Yes' : 'No'],
+          ['API status', payload.ok ? 'OK' : 'Error'],
+          ['Subject count', payload.subjectCount ?? 'Not returned'],
+          ['Checked at', formatDateTime(payload.checkedAt)]
+        ];
+
+        return rows.map(([label, value]) => `
+          <article class="row">
+            <div>
+              <p class="row-title">${escapeHtml(label)}</p>
+              <p class="row-meta">${escapeHtml(String(value))}</p>
+            </div>
+            <span class="badge ${payload.ok ? 'active' : ''}">${payload.ok ? 'OK' : 'Error'}</span>
+          </article>
+        `).join('');
+      }
+
+      function renderRows(view, rows) {
+        if (!rows.length) {
+          return '<div class="empty"><strong>No records returned.</strong><p>The endpoint responded successfully with an empty result set.</p></div>';
+        }
+
+        return rows.map((item) => {
+          const isEvent = view === 'events';
+          const title = isEvent
+            ? item.title || item.event_type || 'Untitled event'
+            : item.title || `Patrol ${item.serial_number || item.id}`;
+          const status = item.priority_label || item.state || 'record';
+          const date = item.updated_at || item.time || latestUpdateTime(item) || item.created_at;
+          const location = item.location
+            ? `${Number(item.location.latitude).toFixed(5)}, ${Number(item.location.longitude).toFixed(5)}`
+            : '';
+          const meta = [
+            item.serial_number ? `#${item.serial_number}` : '',
+            item.event_category || item.objective || '',
+            date ? formatDateTime(date) : '',
+            location
+          ].filter(Boolean);
+
+          return `
+            <article class="row">
+              <div>
+                <p class="row-title">${escapeHtml(title)}</p>
+                <p class="row-meta">${meta.map(escapeHtml).join('<span>/</span>')}</p>
+              </div>
+              <span class="badge ${escapeHtml(String(status).toLowerCase())}">${escapeHtml(status)}</span>
+            </article>
+          `;
+        }).join('');
+      }
+
+      function getCollection(payload) {
+        const data = payload && payload.data ? payload.data : {};
+        return {
+          count: typeof data.count === 'number' ? data.count : null,
+          results: Array.isArray(data.results) ? data.results : []
+        };
+      }
+
+      function latestUpdateTime(item) {
+        return item.updates && item.updates[0] ? item.updates[0].time : '';
+      }
+
+      function formatCount(value) {
+        return typeof value === 'number' ? value.toLocaleString() : '...';
+      }
+
+      function formatTime(value) {
+        if (!value) return '...';
+        return new Date(value).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      }
+
+      function formatDateTime(value) {
+        if (!value) return '';
+        return new Date(value).toLocaleString([], {
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      }
+
+      function loadingMarkup() {
+        return '<div class="loading"><strong>Loading EarthRanger data...</strong><p>Fetching the latest Health, Events, and Patrols responses.</p></div>';
+      }
+
+      function errorMarkup(message) {
+        return `<div class="error"><strong>EarthRanger request failed.</strong><p>${escapeHtml(message)}</p></div>`;
+      }
+
+      function escapeHtml(value) {
+        return String(value).replace(/[&<>"']/g, (char) => ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#39;'
+        })[char]);
       }
     </script>
   </body>
