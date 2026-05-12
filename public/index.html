@@ -10,14 +10,34 @@
     <button onclick="run('/api/health')">Health</button>
     <button onclick="run('/api/events?page_size=10')">Events</button>
     <button onclick="run('/api/patrols?page_size=10')">Patrols</button>
-    <pre id="out" style="background:#111;color:#0f0;padding:1rem;border-radius:8px;">Click a button...</pre>
+    <pre id="out" style="background:#111;color:#0f0;padding:1rem;border-radius:8px;white-space:pre-wrap;">Click a button...</pre>
     <script>
       async function run(path) {
         const out = document.getElementById('out');
         out.textContent = 'Loading ' + path;
-        const res = await fetch(path);
-        const json = await res.json();
-        out.textContent = JSON.stringify(json, null, 2);
+        try {
+          const res = await fetch(path);
+          const json = await res.json();
+
+          if (json.error && json.error.includes('Missing auth')) {
+            out.textContent = [
+              'EarthRanger credentials are not configured in Vercel yet.',
+              '',
+              'Add one of these auth options to the Vercel project environment variables:',
+              '- ER_TOKEN',
+              '- ER_TRACK_TOKEN',
+              '- DAS_WEB_TOKEN',
+              '- or ER_USERNAME and ER_PASSWORD',
+              '',
+              'Then redeploy the project.'
+            ].join('\n');
+            return;
+          }
+
+          out.textContent = JSON.stringify(json, null, 2);
+        } catch (error) {
+          out.textContent = 'Request failed: ' + error.message;
+        }
       }
     </script>
   </body>
