@@ -210,8 +210,8 @@
       .active-list {
         display: grid;
         gap: 8px;
-        max-height: 220px;
-        overflow: auto;
+        max-height: 304px;
+        overflow-y: auto;
       }
 
       .active-item {
@@ -798,6 +798,107 @@
           width: max-content;
         }
       }
+
+      .report-detail-table {
+        border-collapse: collapse;
+        font-size: 11px;
+        width: 100%;
+      }
+
+      .report-detail-table th,
+      .report-detail-table td {
+        border: 1px solid var(--line);
+        padding: 6px 8px;
+        text-align: left;
+        white-space: nowrap;
+      }
+
+      .report-detail-table th {
+        background: var(--soft);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 10px;
+        font-weight: 800;
+        position: sticky;
+        text-transform: uppercase;
+        top: 0;
+        z-index: 1;
+      }
+
+      .report-detail-table td:nth-child(4),
+      .report-detail-table td:nth-child(5) {
+        white-space: normal;
+        min-width: 100px;
+      }
+
+      .report-detail-table tbody tr:nth-child(even) {
+        background: var(--soft);
+      }
+
+      @page {
+        size: A4 landscape;
+        margin: 10mm;
+      }
+
+      @media print {
+        body * {
+          visibility: hidden;
+        }
+
+        .report-panel,
+        .report-panel * {
+          visibility: visible;
+        }
+
+        .report-panel {
+          border: none;
+          left: 0;
+          position: absolute;
+          top: 0;
+          width: 100%;
+        }
+
+        .report-head {
+          background: #1b2a4a !important;
+          color: #fff !important;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+
+        .report-card {
+          background: #f5f6f8 !important;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+
+        .report-detail-table th {
+          background: #f5f6f8 !important;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+
+        .report-detail-table tbody tr:nth-child(even) {
+          background: #f9fafb !important;
+          -webkit-print-color-adjust: exact;
+          print-color-adjust: exact;
+        }
+
+        .report-detail-table {
+          font-size: 9px;
+        }
+
+        .report-detail-table th,
+        .report-detail-table td {
+          padding: 4px 6px;
+        }
+
+        .report-panel {
+          page-break-inside: auto;
+        }
+
+        .report-detail-table tr {
+          page-break-inside: avoid;
+        }
+      }
     </style>
   </head>
   <body>
@@ -922,7 +1023,7 @@
             <div class="panel-head">
               <div>
                 <p class="row-title">Patrol index</p>
-                <p class="row-meta" id="tableSummary">Patrol ID / Patrol Type / Patrol Title / Tracked By / Objective / Details / Total Hours / Start Date / End Date / Start Location / End Location</p>
+                <p class="row-meta" id="tableSummary">Patrol ID / Patrol Type / Patrol Title / Tracked By / Total Hours / Kilometers / Start Date / End Date / Start Location / End Location</p>
               </div>
             </div>
             <div class="list" id="content" role="tabpanel" aria-live="polite"></div>
@@ -1018,10 +1119,20 @@
       });
       setInterval(autoRefreshPatrols, 60000);
 
-      [searchInput, typeFilter, statusFilter, sortFilter, fromFilter, toFilter, ongoingFilter, timeWindowEnabled, timeFromFilter, timeToFilter].forEach((control) => {
+      [searchInput, typeFilter, statusFilter, sortFilter, ongoingFilter, timeWindowEnabled, timeFromFilter, timeToFilter].forEach((control) => {
         control.addEventListener('input', render);
         control.addEventListener('change', render);
       });
+
+      function onDateRangeChange() {
+        render();
+        if (fromFilter.value && toFilter.value) {
+          harvestDateRangePatrols();
+        }
+      }
+
+      fromFilter.addEventListener('change', onDateRangeChange);
+      toFilter.addEventListener('change', onDateRangeChange);
 
       setDefaultDateRange();
       refreshAll();
@@ -1037,10 +1148,17 @@
         state.hasMore = true;
         render();
 
-        await Promise.all([loadHealth(), loadCachedPatrols(false)]);
-        if (!state.patrols.length) await loadNextPage(false);
+        await loadHealth();
 
-        state.loading = false;
+        if (fromFilter.value && toFilter.value) {
+          state.loading = false;
+          await harvestDateRangePatrols(false);
+        } else {
+          await loadCachedPatrols(false);
+          if (!state.patrols.length) await loadNextPage(false);
+          state.loading = false;
+        }
+
         render();
       }
 
@@ -1084,6 +1202,7 @@
       async function harvestDateRangePatrols(shouldRender = true) {
         state.rangeHarvesting = true;
         state.hasMore = false;
+        state.patrols = [];
         state.totalCount = 0;
         if (shouldRender) render();
 
@@ -1266,36 +1385,22 @@
       }
 
       function renderReport(report) {
-        const distanceNote = report.distanceRecordCount
-          ? `${report.distanceRecordCount.toLocaleString()} patrols include distance values`
-          : 'Distance values were not returned by the loaded patrol records';
-
         reportPanel.hidden = false;
-        reportPanel.innerHTML = `
-          <div class="report-head">
-            <h2>Blue Alliance</h2>
-            <p>Patrol Summary Report - ${escapeHtml(report.coverage)}</p>
-            <p>As of ${escapeHtml(formatFullDateTime(report.generatedAt))}</p>
-          </div>
-          <div class="report-body">
-            <div class="report-grid">
-              <article class="report-card">
-                <span>Total patrols</span>
-                <strong>${report.totalPatrols.toLocaleString()}</strong>
-              </article>
-              <article class="report-card">
-                <span>Total hours</span>
-                <strong>${escapeHtml(formatReportHours(report.totalMs))}</strong>
-              </article>
-              <article class="report-card">
-                <span>Total kilometers</span>
-                <strong>${report.totalKm.toFixed(2)} km</strong>
-              </article>
-            </div>
-            <p class="advanced-note">${escapeHtml(distanceNote)}</p>
-            ${renderTypeSubtotalTable(report.typeTotals)}
-          </div>
-        `;
+        reportPanel.innerHTML = [
+          '<div class="report-head">',
+            '<h2>Blue Alliance</h2>',
+            '<p>Patrol Index Report - ', escapeHtml(report.coverage), '</p>',
+            '<p>Date Generated: ', escapeHtml(formatFullDateTime(report.generatedAt)), '</p>',
+          '</div>',
+          '<div class="report-body">',
+            '<div class="report-grid">',
+              '<article class="report-card"><span>Total patrols</span><strong>', report.totalPatrols.toLocaleString(), '</strong></article>',
+              '<article class="report-card"><span>Total hours</span><strong>', escapeHtml(formatReportHours(report.totalMs)), '</strong></article>',
+              '<article class="report-card"><span>Total kilometers</span><strong>', report.totalKm.toFixed(2), ' km</strong></article>',
+            '</div>',
+            renderPatrolDetailTable(report.rows),
+          '</div>'
+        ].join('');
       }
 
       function renderTypeSubtotalTable(typeTotals) {
@@ -1327,6 +1432,52 @@
             <tbody>${rows}</tbody>
           </table>
         `;
+      }
+
+      function renderPatrolDetailTable(rows) {
+        if (!rows.length) {
+          return '<p class="advanced-note">No patrols matched the current filters.</p>';
+        }
+
+        const body = rows.map((item, index) => {
+          const row = normalizePatrol(item);
+          const durationMs = getPatrolDurationMilliseconds(item);
+          const distanceKm = getPatrolKilometers(item);
+          return [
+            '<tr>',
+              '<td>', String(index + 1), '</td>',
+              '<td>', escapeHtml(String(row.patrolId)), '</td>',
+              '<td>', escapeHtml(row.patrolType), '</td>',
+              '<td>', escapeHtml(row.patrolTitle), '</td>',
+              '<td>', escapeHtml(row.trackedBy), '</td>',
+              '<td>', escapeHtml(row.startDate), '</td>',
+              '<td>', escapeHtml(row.endDate), '</td>',
+              '<td>', escapeHtml(formatHours(durationMs)), '</td>',
+              '<td>', distanceKm !== null ? distanceKm.toFixed(2) + ' km' : '-', '</td>',
+              '<td>', escapeHtml(row.startLocation), '</td>',
+              '<td>', escapeHtml(row.endLocation), '</td>',
+            '</tr>'
+          ].join('');
+        }).join('');
+
+        return [
+          '<table class="report-detail-table" aria-label="Patrol detail list">',
+            '<thead><tr>',
+              '<th>#</th>',
+              '<th>ID</th>',
+              '<th>Type</th>',
+              '<th>Title</th>',
+              '<th>Tracked By</th>',
+              '<th>Start</th>',
+              '<th>End</th>',
+              '<th>Hours</th>',
+              '<th>Distance</th>',
+              '<th>Start Location</th>',
+              '<th>End Location</th>',
+            '</tr></thead>',
+            '<tbody>', body, '</tbody>',
+          '</table>'
+        ].join('');
       }
 
       function handleTrackerKeydown(event) {
@@ -1547,14 +1698,15 @@
 
         const tableRows = rows.map((item) => {
           const row = normalizePatrol(item);
+          const distanceKm = getPatrolKilometers(item);
           return `
             <tr>
               <td class="id-cell">${escapeHtml(row.patrolId)}</td>
               <td>${escapeHtml(row.patrolType)}</td>
               <td>${escapeHtml(row.patrolTitle)}</td>
               <td>${escapeHtml(row.trackedBy)}</td>
-              <td>${escapeHtml(row.objectiveDetails)}</td>
               <td class="number-cell">${escapeHtml(row.totalHours)}</td>
+              <td class="number-cell">${distanceKm !== null ? distanceKm.toFixed(2) + ' km' : '-'}</td>
               <td>${escapeHtml(row.startDate)}</td>
               <td>${escapeHtml(row.endDate)}</td>
               <td>${escapeHtml(row.startLocation)}</td>
@@ -1571,8 +1723,8 @@
                 <th>Patrol Type</th>
                 <th>Patrol Title</th>
                 <th>Tracked By</th>
-                <th>Objective / Details</th>
                 <th>Total Hours</th>
+                <th>Kilometers</th>
                 <th>Start Date</th>
                 <th>End Date</th>
                 <th>Start Location</th>
@@ -2027,19 +2179,19 @@
         const parts = [];
 
         if (filters.from || filters.to) {
-          parts.push(`Coverage ${filters.from || 'start'} to ${filters.to || 'latest'}`);
+          parts.push(`Date Coverage: ${filters.from || 'start'} to ${filters.to || 'latest'}`);
         } else {
           parts.push('Loaded patrol coverage');
         }
 
         if (filters.timeWindowEnabled) {
-          parts.push(`starts ${filters.timeFrom || '--:--'}-${filters.timeTo || '--:--'}`);
+          parts.push(`Time Coverage: ${filters.timeFrom || '--:--'} - ${filters.timeTo || '--:--'}`);
         }
 
-        if (filters.type) parts.push(`type: ${filters.type}`);
-        if (filters.status) parts.push(`status: ${filters.status}`);
-        if (filters.trackers.length) parts.push(`tracked by: ${filters.trackers.join(', ')}`);
-        if (filters.search) parts.push(`search: ${filters.search}`);
+        if (filters.type) parts.push(`Type: ${filters.type}`);
+        if (filters.status) parts.push(`Status: ${filters.status}`);
+        if (filters.trackers.length) parts.push(`Tracked by: ${filters.trackers.join(', ')}`);
+        if (filters.search) parts.push(`Search: ${filters.search}`);
 
         return parts.join(' / ');
       }
