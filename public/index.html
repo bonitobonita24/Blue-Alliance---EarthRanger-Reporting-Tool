@@ -249,6 +249,19 @@
         grid-template-columns: 1fr;
       }
 
+      .time-grid {
+        display: grid;
+        gap: 8px;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      .advanced-note {
+        color: #555;
+        font-size: 13px;
+        line-height: 1.4;
+        margin: 0;
+      }
+
       .secondary-button {
         background: var(--soft);
         border-radius: 999px;
@@ -595,6 +608,21 @@
                 <input id="ongoingFilter" type="checkbox" />
                 <span>Show only actively ongoing patrols</span>
               </label>
+              <label class="checkbox-field" for="timeWindowEnabled">
+                <input id="timeWindowEnabled" type="checkbox" />
+                <span>Advanced start time window</span>
+              </label>
+              <div class="time-grid">
+                <div class="field">
+                  <label for="timeFromFilter">From time</label>
+                  <input id="timeFromFilter" type="time" value="22:00" />
+                </div>
+                <div class="field">
+                  <label for="timeToFilter">To time</label>
+                  <input id="timeToFilter" type="time" value="07:00" />
+                </div>
+              </div>
+              <p class="advanced-note">Daily overnight window across the selected date range.</p>
               <div class="filter-actions">
                 <button class="secondary-button" id="clearFiltersButton" type="button">Clear filters</button>
               </div>
@@ -645,6 +673,9 @@
       const fromFilter = document.getElementById('fromFilter');
       const toFilter = document.getElementById('toFilter');
       const ongoingFilter = document.getElementById('ongoingFilter');
+      const timeWindowEnabled = document.getElementById('timeWindowEnabled');
+      const timeFromFilter = document.getElementById('timeFromFilter');
+      const timeToFilter = document.getElementById('timeToFilter');
       const clearFiltersButton = document.getElementById('clearFiltersButton');
 
       const lazyLoader = new IntersectionObserver((entries) => {
@@ -658,7 +689,7 @@
       clearFiltersButton.addEventListener('click', clearFilters);
       setInterval(render, 60000);
 
-      [searchInput, typeFilter, statusFilter, sortFilter, fromFilter, toFilter, ongoingFilter].forEach((control) => {
+      [searchInput, typeFilter, statusFilter, sortFilter, fromFilter, toFilter, ongoingFilter, timeWindowEnabled, timeFromFilter, timeToFilter].forEach((control) => {
         control.addEventListener('input', render);
         control.addEventListener('change', render);
       });
@@ -737,6 +768,9 @@
         fromFilter.value = '';
         toFilter.value = '';
         ongoingFilter.checked = false;
+        timeWindowEnabled.checked = false;
+        timeFromFilter.value = '22:00';
+        timeToFilter.value = '07:00';
         render();
       }
 
@@ -872,7 +906,10 @@
           status: ongoingFilter.checked ? 'ongoing' : statusFilter.value,
           sort: sortFilter.value,
           from: fromFilter.value,
-          to: toFilter.value
+          to: toFilter.value,
+          timeWindowEnabled: timeWindowEnabled.checked,
+          timeFrom: timeFromFilter.value,
+          timeTo: timeToFilter.value
         };
       }
 
@@ -893,8 +930,13 @@
         if (filters.status === 'ongoing' && !isOngoingPatrol(item)) return false;
         if (filters.status === 'open' && String(item.state || '').toLowerCase() !== 'open') return false;
         if (filters.status === 'closed' && String(item.state || '').toLowerCase() === 'open') return false;
-        if (filters.from && (!startDate || startDate < startOfDay(filters.from))) return false;
-        if (filters.to && (!startDate || startDate > endOfDay(filters.to))) return false;
+
+        if (filters.timeWindowEnabled) {
+          if (!matchesStartWindow(startDate, filters)) return false;
+        } else {
+          if (filters.from && (!startDate || startDate < startOfDay(filters.from))) return false;
+          if (filters.to && (!startDate || startDate > endOfDay(filters.to))) return false;
+        }
 
         return true;
       }
@@ -987,6 +1029,57 @@
 
       function endOfDay(value) {
         return new Date(`${value}T23:59:59.999`);
+      }
+
+      function matchesStartWindow(startDate, filters) {
+        if (!startDate || !filters.timeFrom || !filters.timeTo) return false;
+
+        const fromMinutes = timeToMinutes(filters.timeFrom);
+        const toMinutes = timeToMinutes(filters.timeTo);
+        const startMinutes = startDate.getHours() * 60 + startDate.getMinutes();
+
+        if (fromMinutes === null || toMinutes === null) return false;
+
+        if (fromMinutes <= toMinutes) {
+          return isDateInSelectedRange(localDateKey(startDate), filters.from, filters.to)
+            && startMinutes >= fromMinutes
+            && startMinutes <= toMinutes;
+        }
+
+        if (startMinutes >= fromMinutes) {
+          return isDateInSelectedRange(localDateKey(startDate), filters.from, filters.to);
+        }
+
+        if (startMinutes <= toMinutes) {
+          return isDateInSelectedRange(localDateKey(addDays(startDate, -1)), filters.from, filters.to);
+        }
+
+        return false;
+      }
+
+      function timeToMinutes(value) {
+        const [hours, minutes] = String(value).split(':').map(Number);
+        if (!Number.isFinite(hours) || !Number.isFinite(minutes)) return null;
+        return hours * 60 + minutes;
+      }
+
+      function isDateInSelectedRange(dateKey, from, to) {
+        if (from && dateKey < from) return false;
+        if (to && dateKey > to) return false;
+        return true;
+      }
+
+      function localDateKey(date) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      }
+
+      function addDays(date, days) {
+        const next = new Date(date);
+        next.setDate(next.getDate() + days);
+        return next;
       }
 
       function firstValue(...values) {
