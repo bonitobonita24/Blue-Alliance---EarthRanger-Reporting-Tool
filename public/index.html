@@ -262,6 +262,68 @@
         margin: 0;
       }
 
+      .chip-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        min-height: 0;
+      }
+
+      .chip {
+        align-items: center;
+        background: var(--ink);
+        border-radius: 999px;
+        color: var(--canvas);
+        display: inline-flex;
+        font-size: 12px;
+        font-weight: 700;
+        gap: 6px;
+        min-height: 28px;
+        padding: 0 8px 0 10px;
+      }
+
+      .chip button {
+        background: rgba(255, 255, 255, 0.18);
+        border-radius: 999px;
+        color: var(--canvas);
+        font-size: 14px;
+        height: 18px;
+        line-height: 1;
+        width: 18px;
+      }
+
+      .suggestions {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        display: none;
+        max-height: 180px;
+        overflow: auto;
+      }
+
+      .suggestions.is-open {
+        display: block;
+      }
+
+      .suggestion {
+        background: var(--canvas);
+        border-bottom: 1px solid var(--line);
+        display: block;
+        font-size: 14px;
+        min-height: 36px;
+        padding: 8px 10px;
+        text-align: left;
+        width: 100%;
+      }
+
+      .suggestion:last-child {
+        border-bottom: 0;
+      }
+
+      .suggestion:hover,
+      .suggestion:focus {
+        background: var(--soft);
+      }
+
       .secondary-button {
         background: var(--soft);
         border-radius: 999px;
@@ -573,6 +635,12 @@
                 <input id="searchInput" type="search" placeholder="ID, title, type, location" autocomplete="off" />
               </div>
               <div class="field">
+                <label for="trackedByInput">Tracked by</label>
+                <div class="chip-list" id="trackedByChips" aria-label="Selected tracked by users"></div>
+                <input id="trackedByInput" type="search" placeholder="Type a tracker name" autocomplete="off" />
+                <div class="suggestions" id="trackedBySuggestions" role="listbox" aria-label="Tracked by suggestions"></div>
+              </div>
+              <div class="field">
                 <label for="typeFilter">Patrol type</label>
                 <select id="typeFilter">
                   <option value="">All types</option>
@@ -654,7 +722,8 @@
         totalCount: null,
         page: 0,
         hasMore: true,
-        error: null
+        error: null,
+        selectedTrackers: []
       };
 
       const endpoints = {
@@ -667,6 +736,9 @@
       const stateLabel = document.getElementById('stateLabel');
       const tableSummary = document.getElementById('tableSummary');
       const searchInput = document.getElementById('searchInput');
+      const trackedByInput = document.getElementById('trackedByInput');
+      const trackedByChips = document.getElementById('trackedByChips');
+      const trackedBySuggestions = document.getElementById('trackedBySuggestions');
       const typeFilter = document.getElementById('typeFilter');
       const statusFilter = document.getElementById('statusFilter');
       const sortFilter = document.getElementById('sortFilter');
@@ -687,6 +759,11 @@
 
       refreshButton.addEventListener('click', () => refreshAll());
       clearFiltersButton.addEventListener('click', clearFilters);
+      trackedByInput.addEventListener('input', renderTrackerSuggestions);
+      trackedByInput.addEventListener('keydown', handleTrackerKeydown);
+      trackedByInput.addEventListener('blur', () => {
+        setTimeout(() => trackedBySuggestions.classList.remove('is-open'), 140);
+      });
       setInterval(render, 60000);
 
       [searchInput, typeFilter, statusFilter, sortFilter, fromFilter, toFilter, ongoingFilter, timeWindowEnabled, timeFromFilter, timeToFilter].forEach((control) => {
@@ -741,6 +818,7 @@
           state.hasMore = Boolean(json.data && json.data.next);
           appendPatrols(collection.results);
           updateTypeOptions();
+          renderTrackerSuggestions();
         } catch (error) {
           state.error = error.message;
           state.hasMore = false;
@@ -762,6 +840,8 @@
 
       function clearFilters() {
         searchInput.value = '';
+        trackedByInput.value = '';
+        state.selectedTrackers = [];
         typeFilter.value = '';
         statusFilter.value = '';
         sortFilter.value = 'start_desc';
@@ -771,7 +851,71 @@
         timeWindowEnabled.checked = false;
         timeFromFilter.value = '22:00';
         timeToFilter.value = '07:00';
+        renderTrackerChips();
+        renderTrackerSuggestions();
         render();
+      }
+
+      function handleTrackerKeydown(event) {
+        if (event.key !== 'Enter') return;
+
+        event.preventDefault();
+        const options = getTrackerSuggestions();
+        const typed = trackedByInput.value.trim();
+        const match = options[0] || getAllTrackerNames().find((name) => name.toLowerCase() === typed.toLowerCase());
+        if (match) addTrackerFilter(match);
+      }
+
+      function addTrackerFilter(name) {
+        if (!name || state.selectedTrackers.includes(name)) return;
+
+        state.selectedTrackers.push(name);
+        trackedByInput.value = '';
+        renderTrackerChips();
+        renderTrackerSuggestions();
+        render();
+      }
+
+      function removeTrackerFilter(name) {
+        state.selectedTrackers = state.selectedTrackers.filter((tracker) => tracker !== name);
+        renderTrackerChips();
+        renderTrackerSuggestions();
+        render();
+      }
+
+      function renderTrackerChips() {
+        trackedByChips.innerHTML = state.selectedTrackers.map((name) => {
+          return `
+            <span class="chip">
+              ${escapeHtml(name)}
+              <button type="button" aria-label="Remove ${escapeHtml(name)}" data-name="${escapeHtml(name)}" onclick="removeTrackerFilter(this.dataset.name)">x</button>
+            </span>
+          `;
+        }).join('');
+      }
+
+      function renderTrackerSuggestions() {
+        const suggestions = getTrackerSuggestions();
+        trackedBySuggestions.innerHTML = suggestions.map((name) => {
+          return `<button class="suggestion" type="button" role="option" data-name="${escapeHtml(name)}" onclick="addTrackerFilter(this.dataset.name)">${escapeHtml(name)}</button>`;
+        }).join('');
+        trackedBySuggestions.classList.toggle('is-open', Boolean(trackedByInput.value.trim() && suggestions.length));
+      }
+
+      function getTrackerSuggestions() {
+        const query = trackedByInput.value.trim().toLowerCase();
+        if (!query) return [];
+
+        return getAllTrackerNames()
+          .filter((name) => !state.selectedTrackers.includes(name))
+          .filter((name) => name.toLowerCase().includes(query))
+          .slice(0, 8);
+      }
+
+      function getAllTrackerNames() {
+        return [...new Set(state.patrols.flatMap((item) => getTrackedByList(item)))].sort((left, right) => {
+          return left.localeCompare(right);
+        });
       }
 
       function render() {
@@ -915,6 +1059,7 @@
       function getFilters() {
         return {
           search: searchInput.value.trim().toLowerCase(),
+          trackers: [...state.selectedTrackers],
           type: typeFilter.value,
           status: ongoingFilter.checked ? 'ongoing' : statusFilter.value,
           sort: sortFilter.value,
@@ -929,6 +1074,7 @@
       function hasRestrictiveFilters(filters) {
         return Boolean(
           filters.search ||
+          filters.trackers.length ||
           filters.type ||
           filters.status ||
           filters.from ||
@@ -952,6 +1098,7 @@
         ].join(' ').toLowerCase();
 
         if (filters.search && !text.includes(filters.search)) return false;
+        if (filters.trackers.length && !trackerMatches(item, filters.trackers)) return false;
         if (filters.type && row.patrolType !== filters.type) return false;
         if (filters.status === 'ongoing' && !isOngoingPatrol(item)) return false;
         if (filters.status === 'open' && String(item.state || '').toLowerCase() !== 'open') return false;
@@ -965,6 +1112,11 @@
         }
 
         return true;
+      }
+
+      function trackerMatches(item, selectedTrackers) {
+        const itemTrackers = getTrackedByList(item).map((name) => name.toLowerCase());
+        return selectedTrackers.some((name) => itemTrackers.includes(name.toLowerCase()));
       }
 
       function comparePatrols(left, right, sort) {
@@ -1010,7 +1162,17 @@
       }
 
       function getTrackedBy(segments) {
-        const names = [...new Set(segments.map((segment) => {
+        const names = getTrackedByNamesFromSegments(segments);
+        return names.length ? names.join(', ') : '-';
+      }
+
+      function getTrackedByList(item) {
+        const segments = Array.isArray(item.patrol_segments) ? item.patrol_segments : [];
+        return getTrackedByNamesFromSegments(segments);
+      }
+
+      function getTrackedByNamesFromSegments(segments) {
+        return [...new Set(segments.map((segment) => {
           const leader = segment.leader || {};
           return firstValue(
             leader.name,
@@ -1019,8 +1181,6 @@
             leader.first_name && leader.last_name ? `${leader.first_name} ${leader.last_name}` : ''
           );
         }).filter((name) => name && name !== '-'))];
-
-        return names.length ? names.join(', ') : '-';
       }
 
       function getObjectiveDetails(item) {
@@ -1213,6 +1373,7 @@
           "'": '&#39;'
         })[char]);
       }
+
     </script>
   </body>
 </html>
