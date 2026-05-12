@@ -622,7 +622,7 @@
                   <input id="timeToFilter" type="time" value="07:00" />
                 </div>
               </div>
-              <p class="advanced-note">Uses each patrol's actual start date and time.</p>
+              <p class="advanced-note">Date range harvests patrol start dates. Overnight windows match starts from the From time through 11:59 PM on each selected date.</p>
               <div class="filter-actions">
                 <button class="secondary-button" id="clearFiltersButton" type="button">Clear filters</button>
               </div>
@@ -1066,7 +1066,7 @@
           return startMinutes >= fromMinutes && startMinutes <= toMinutes;
         }
 
-        return startMinutes >= fromMinutes || startMinutes <= toMinutes;
+        return startMinutes >= fromMinutes;
       }
 
       function timeToMinutes(value) {
