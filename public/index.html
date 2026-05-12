@@ -777,14 +777,18 @@
       function render() {
         const hasError = Boolean(state.error);
         const isConnected = Boolean(state.health && state.health.ok);
+        const filters = getFilters();
         const visibleRows = getVisiblePatrols();
+        const filtered = hasRestrictiveFilters(filters);
 
         refreshButton.disabled = state.loading || state.loadingMore;
         document.getElementById('connectionMetric').textContent = isConnected ? 'Live' : hasError ? 'Error' : '...';
         document.getElementById('patrolsMetric').textContent = formatCount(state.totalCount);
         document.getElementById('displayedMetric').textContent = formatCount(visibleRows.length);
         document.getElementById('checkedMetric').textContent = formatTime(state.health && state.health.checkedAt);
-        tableSummary.textContent = `${visibleRows.length.toLocaleString()} shown / ${state.patrols.length.toLocaleString()} loaded. Scroll the table to keep loading older patrols.`;
+        tableSummary.textContent = filtered
+          ? `${visibleRows.length.toLocaleString()} shown / ${state.patrols.length.toLocaleString()} loaded. Filtered results pause auto-loading; use Load more if needed.`
+          : `${visibleRows.length.toLocaleString()} shown / ${state.patrols.length.toLocaleString()} loaded. Scroll the table to keep loading older patrols.`;
 
         stateDot.classList.toggle('error', hasError || !isConnected);
         stateLabel.textContent = state.loading ? 'Loading' : state.loadingMore ? 'Loading more' : isConnected ? 'Connected' : 'Needs attention';
@@ -800,16 +804,18 @@
         }
 
         content.innerHTML = renderPatrolTable(visibleRows);
-        observeLoadTrigger();
+        observeLoadTrigger(filtered);
       }
 
       function renderPatrolTable(rows) {
         if (!rows.length) {
+          const filters = getFilters();
+          const filtered = hasRestrictiveFilters(filters);
           return `
             <div class="empty">
               <strong>No matching patrols in the loaded rows.</strong>
               <p>Clear filters or keep loading older patrols; matching records may be farther back in the EarthRanger feed.</p>
-              ${state.hasMore ? '<p><button class="load-more" id="loadTrigger" type="button" onclick="loadNextPage()">Load more patrols</button></p>' : ''}
+              ${state.hasMore ? `<p><button class="load-more" ${filtered ? '' : 'id="loadTrigger"'} type="button" onclick="loadNextPage()">Load more source patrols</button></p>` : ''}
             </div>
           `;
         }
@@ -853,6 +859,8 @@
       }
 
       function loadRowMarkup() {
+        const filtered = hasRestrictiveFilters(getFilters());
+
         if (state.loadingMore) {
           return `
             <tr class="load-row">
@@ -876,17 +884,18 @@
         }
 
         return `
-          <tr class="load-row" id="loadTrigger">
+          <tr class="load-row" ${filtered ? '' : 'id="loadTrigger"'}>
             <td colspan="8">
-              <button class="load-more" type="button" onclick="loadNextPage()">Load more patrols</button>
-              <span class="load-note">Scroll here to continue lazy loading older patrols</span>
+              <button class="load-more" type="button" onclick="loadNextPage()">Load more source patrols</button>
+              <span class="load-note">${filtered ? 'Auto-loading is paused while filters are active' : 'Scroll here to continue lazy loading older patrols'}</span>
             </td>
           </tr>
         `;
       }
 
-      function observeLoadTrigger() {
+      function observeLoadTrigger(filtered) {
         lazyLoader.disconnect();
+        if (filtered) return;
         const trigger = document.getElementById('loadTrigger');
         if (trigger) lazyLoader.observe(trigger);
       }
@@ -911,6 +920,17 @@
           timeFrom: timeFromFilter.value,
           timeTo: timeToFilter.value
         };
+      }
+
+      function hasRestrictiveFilters(filters) {
+        return Boolean(
+          filters.search ||
+          filters.type ||
+          filters.status ||
+          filters.from ||
+          filters.to ||
+          filters.timeWindowEnabled
+        );
       }
 
       function patrolMatches(item, filters) {
