@@ -3,8 +3,8 @@ import { createPatrol, getPatrols } from '../lib/earthranger.js';
 export default async function handler(req, res) {
   try {
     if (req.method === 'GET') {
-      const { page_size = 25, since, until, patrol_type, status, sort_by = '-serial_number' } = req.query;
-      const patrols = await getPatrols({ page_size, since, until, patrol_type, status, sort_by });
+      const { page = 1, page_size = 25, since, until, patrol_type, status, sort_by = '-serial_number' } = req.query;
+      const patrols = await getPatrols({ page, page_size, since, until, patrol_type, status, sort_by });
       return res.status(200).json(patrols);
     }
 

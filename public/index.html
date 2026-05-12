@@ -165,13 +165,96 @@
       }
 
       .workspace {
-        display: block;
+        align-items: start;
+        display: grid;
+        gap: 20px;
+        grid-template-columns: 280px minmax(0, 1fr);
       }
 
       .panel {
         border: 1px solid var(--line);
         border-radius: 8px;
         overflow: hidden;
+      }
+
+      .filters {
+        background: var(--canvas);
+        position: sticky;
+        top: 16px;
+      }
+
+      .filters-body {
+        display: grid;
+        gap: 14px;
+        padding: 14px;
+      }
+
+      .field {
+        display: grid;
+        gap: 6px;
+      }
+
+      .field label {
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      .field input,
+      .field select {
+        background: var(--canvas);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        color: var(--ink);
+        font: inherit;
+        font-size: 14px;
+        min-height: 40px;
+        padding: 8px 10px;
+        width: 100%;
+      }
+
+      .field input:focus,
+      .field select:focus {
+        border-color: var(--ink);
+        outline: 2px solid transparent;
+      }
+
+      .checkbox-field {
+        align-items: center;
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        display: grid;
+        gap: 10px;
+        grid-template-columns: 18px 1fr;
+        padding: 10px;
+      }
+
+      .checkbox-field input {
+        height: 18px;
+        margin: 0;
+        width: 18px;
+      }
+
+      .checkbox-field span {
+        font-size: 14px;
+        font-weight: 700;
+        line-height: 1.25;
+      }
+
+      .filter-actions {
+        display: grid;
+        gap: 8px;
+        grid-template-columns: 1fr;
+      }
+
+      .secondary-button {
+        background: var(--soft);
+        border-radius: 999px;
+        font-size: 14px;
+        font-weight: 700;
+        min-height: 40px;
       }
 
       .panel-head {
@@ -208,6 +291,7 @@
       }
 
       .list {
+        max-height: calc(100vh - 250px);
         min-height: 390px;
         overflow: auto;
       }
@@ -261,6 +345,28 @@
         font-variant-numeric: tabular-nums;
         text-align: right;
         white-space: nowrap;
+      }
+
+      .load-row td {
+        background: var(--soft);
+        text-align: center;
+      }
+
+      .load-more {
+        background: var(--ink);
+        border-radius: 999px;
+        color: var(--canvas);
+        font-size: 14px;
+        font-weight: 700;
+        min-height: 38px;
+        padding: 0 16px;
+      }
+
+      .load-note {
+        color: #555;
+        display: block;
+        font-size: 13px;
+        margin-top: 8px;
       }
 
       .row {
@@ -355,8 +461,17 @@
       }
 
       @media (max-width: 900px) {
-        .status-strip {
+        .status-strip,
+        .workspace {
           grid-template-columns: 1fr;
+        }
+
+        .filters {
+          position: static;
+        }
+
+        .list {
+          max-height: none;
         }
 
         .topbar {
@@ -432,11 +547,65 @@
         </section>
 
         <section class="workspace">
+          <aside class="panel filters" aria-label="Patrol filters and sorting">
+            <div class="panel-head">
+              <div>
+                <p class="row-title">Manage list</p>
+                <p class="row-meta">Filter and sort loaded patrols</p>
+              </div>
+            </div>
+            <div class="filters-body">
+              <div class="field">
+                <label for="searchInput">Search</label>
+                <input id="searchInput" type="search" placeholder="ID, title, type, location" autocomplete="off" />
+              </div>
+              <div class="field">
+                <label for="typeFilter">Patrol type</label>
+                <select id="typeFilter">
+                  <option value="">All types</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="statusFilter">Status</label>
+                <select id="statusFilter">
+                  <option value="">All, including ongoing</option>
+                  <option value="ongoing">Ongoing only</option>
+                  <option value="open">Open</option>
+                  <option value="closed">Closed</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="sortFilter">Sort</label>
+                <select id="sortFilter">
+                  <option value="latest">Latest patrol ID first</option>
+                  <option value="oldest">Oldest patrol ID first</option>
+                  <option value="start_desc">Newest start date first</option>
+                  <option value="start_asc">Oldest start date first</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="fromFilter">Start date from</label>
+                <input id="fromFilter" type="date" />
+              </div>
+              <div class="field">
+                <label for="toFilter">Start date to</label>
+                <input id="toFilter" type="date" />
+              </div>
+              <label class="checkbox-field" for="ongoingFilter">
+                <input id="ongoingFilter" type="checkbox" />
+                <span>Show only actively ongoing patrols</span>
+              </label>
+              <div class="filter-actions">
+                <button class="secondary-button" id="clearFiltersButton" type="button">Clear filters</button>
+              </div>
+            </div>
+          </aside>
+
           <div class="panel">
             <div class="panel-head">
               <div>
                 <p class="row-title">Patrol index</p>
-                <p class="row-meta">Patrol ID / Patrol Type / Patrol Title / Total Hours / Start Date / End Date / Start Location / End Location</p>
+                <p class="row-meta" id="tableSummary">Patrol ID / Patrol Type / Patrol Title / Total Hours / Start Date / End Date / Start Location / End Location</p>
               </div>
               <div class="state-pill"><span class="dot" id="stateDot"></span><span id="stateLabel">Loading</span></div>
             </div>
@@ -447,96 +616,170 @@
     </div>
 
     <script>
+      const PAGE_SIZE = 100;
+
       const state = {
         loading: false,
+        loadingMore: false,
         health: null,
-        patrols: null,
+        patrols: [],
+        totalCount: null,
+        page: 0,
+        hasMore: true,
         error: null
       };
 
       const endpoints = {
-        health: '/api/health',
-        patrols: '/api/patrols?page_size=50'
+        health: '/api/health'
       };
 
       const content = document.getElementById('content');
       const refreshButton = document.getElementById('refreshButton');
       const stateDot = document.getElementById('stateDot');
       const stateLabel = document.getElementById('stateLabel');
+      const tableSummary = document.getElementById('tableSummary');
+      const searchInput = document.getElementById('searchInput');
+      const typeFilter = document.getElementById('typeFilter');
+      const statusFilter = document.getElementById('statusFilter');
+      const sortFilter = document.getElementById('sortFilter');
+      const fromFilter = document.getElementById('fromFilter');
+      const toFilter = document.getElementById('toFilter');
+      const ongoingFilter = document.getElementById('ongoingFilter');
+      const clearFiltersButton = document.getElementById('clearFiltersButton');
+
+      const lazyLoader = new IntersectionObserver((entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) loadNextPage();
+      }, {
+        root: content,
+        rootMargin: '240px'
+      });
 
       refreshButton.addEventListener('click', () => refreshAll());
+      clearFiltersButton.addEventListener('click', clearFilters);
+
+      [searchInput, typeFilter, statusFilter, sortFilter, fromFilter, toFilter, ongoingFilter].forEach((control) => {
+        control.addEventListener('input', render);
+        control.addEventListener('change', render);
+      });
 
       refreshAll();
 
       async function refreshAll() {
         state.error = null;
         state.loading = true;
+        state.loadingMore = false;
+        state.patrols = [];
+        state.totalCount = null;
+        state.page = 0;
+        state.hasMore = true;
         render();
 
-        await Promise.all(['health', 'patrols'].map((view) => loadView(view, false)));
+        await Promise.all([loadHealth(), loadNextPage(false)]);
 
         state.loading = false;
         render();
       }
 
-      async function loadView(view, shouldRender = true) {
-        if (shouldRender) {
-          state.loading = true;
-          render();
-        }
-
+      async function loadHealth() {
         try {
-          const response = await fetch(endpoints[view]);
+          const response = await fetch(endpoints.health);
           const json = await response.json();
-          state[view] = json;
+          state.health = json;
           if (!response.ok) throw new Error(json.error || 'Request failed');
         } catch (error) {
           state.error = error.message;
-        } finally {
-          if (shouldRender) {
-            state.loading = false;
-            render();
-          }
         }
+      }
+
+      async function loadNextPage(shouldRender = true) {
+        if (state.loadingMore || !state.hasMore) return;
+
+        state.loadingMore = true;
+        if (shouldRender) render();
+
+        try {
+          const nextPage = state.page + 1;
+          const response = await fetch(`/api/patrols?page_size=${PAGE_SIZE}&page=${nextPage}`);
+          const json = await response.json();
+          if (!response.ok) throw new Error(json.error || 'Request failed');
+
+          const collection = getCollection(json);
+          state.totalCount = collection.count;
+          state.page = nextPage;
+          state.hasMore = Boolean(json.data && json.data.next);
+          appendPatrols(collection.results);
+          updateTypeOptions();
+        } catch (error) {
+          state.error = error.message;
+          state.hasMore = false;
+        } finally {
+          state.loadingMore = false;
+          if (shouldRender) render();
+        }
+      }
+
+      function appendPatrols(rows) {
+        const seen = new Set(state.patrols.map((item) => item.id));
+        rows.forEach((item) => {
+          if (!seen.has(item.id)) {
+            state.patrols.push(item);
+            seen.add(item.id);
+          }
+        });
+      }
+
+      function clearFilters() {
+        searchInput.value = '';
+        typeFilter.value = '';
+        statusFilter.value = '';
+        sortFilter.value = 'latest';
+        fromFilter.value = '';
+        toFilter.value = '';
+        ongoingFilter.checked = false;
+        render();
       }
 
       function render() {
         const hasError = Boolean(state.error);
         const isConnected = Boolean(state.health && state.health.ok);
-        const patrolCollection = getCollection(state.patrols);
+        const visibleRows = getVisiblePatrols();
 
-        refreshButton.disabled = state.loading;
+        refreshButton.disabled = state.loading || state.loadingMore;
         document.getElementById('connectionMetric').textContent = isConnected ? 'Live' : hasError ? 'Error' : '...';
-        document.getElementById('patrolsMetric').textContent = formatCount(patrolCollection.count);
-        document.getElementById('displayedMetric').textContent = formatCount(patrolCollection.results.length);
+        document.getElementById('patrolsMetric').textContent = formatCount(state.totalCount);
+        document.getElementById('displayedMetric').textContent = formatCount(visibleRows.length);
         document.getElementById('checkedMetric').textContent = formatTime(state.health && state.health.checkedAt);
+        tableSummary.textContent = `${visibleRows.length.toLocaleString()} shown / ${state.patrols.length.toLocaleString()} loaded. Scroll the table to keep loading older patrols.`;
 
         stateDot.classList.toggle('error', hasError || !isConnected);
-        stateLabel.textContent = state.loading ? 'Loading' : isConnected ? 'Connected' : 'Needs attention';
+        stateLabel.textContent = state.loading ? 'Loading' : state.loadingMore ? 'Loading more' : isConnected ? 'Connected' : 'Needs attention';
 
-        if (state.loading && !state.patrols) {
+        if (state.loading && !state.patrols.length) {
           content.innerHTML = loadingMarkup();
           return;
         }
 
-        if (state.error && !state.patrols) {
+        if (state.error && !state.patrols.length) {
           content.innerHTML = errorMarkup(state.error);
           return;
         }
 
-        content.innerHTML = renderPatrolTable(patrolCollection.results);
+        content.innerHTML = renderPatrolTable(visibleRows);
+        observeLoadTrigger();
       }
 
       function renderPatrolTable(rows) {
         if (!rows.length) {
-          return '<div class="empty"><strong>No records returned.</strong><p>The endpoint responded successfully with an empty result set.</p></div>';
+          return `
+            <div class="empty">
+              <strong>No matching patrols in the loaded rows.</strong>
+              <p>Clear filters or keep loading older patrols; matching records may be farther back in the EarthRanger feed.</p>
+              ${state.hasMore ? '<p><button class="load-more" id="loadTrigger" type="button" onclick="loadNextPage()">Load more patrols</button></p>' : ''}
+            </div>
+          `;
         }
 
-        const sortedRows = [...rows].sort((left, right) => {
-          return Number(right.serial_number || 0) - Number(left.serial_number || 0);
-        });
-
-        const tableRows = sortedRows.map((item) => {
+        const tableRows = rows.map((item) => {
           const row = normalizePatrol(item);
           return `
             <tr>
@@ -566,9 +809,105 @@
                 <th>End Location</th>
               </tr>
             </thead>
-            <tbody>${tableRows}</tbody>
+            <tbody>
+              ${tableRows}
+              ${loadRowMarkup()}
+            </tbody>
           </table>
         `;
+      }
+
+      function loadRowMarkup() {
+        if (state.loadingMore) {
+          return `
+            <tr class="load-row">
+              <td colspan="8">
+                Loading older patrols...
+                <span class="load-note">${state.patrols.length.toLocaleString()} loaded so far</span>
+              </td>
+            </tr>
+          `;
+        }
+
+        if (!state.hasMore) {
+          return `
+            <tr class="load-row">
+              <td colspan="8">
+                End of loaded patrol feed
+                <span class="load-note">${state.patrols.length.toLocaleString()} patrols loaded</span>
+              </td>
+            </tr>
+          `;
+        }
+
+        return `
+          <tr class="load-row" id="loadTrigger">
+            <td colspan="8">
+              <button class="load-more" type="button" onclick="loadNextPage()">Load more patrols</button>
+              <span class="load-note">Scroll here to continue lazy loading older patrols</span>
+            </td>
+          </tr>
+        `;
+      }
+
+      function observeLoadTrigger() {
+        lazyLoader.disconnect();
+        const trigger = document.getElementById('loadTrigger');
+        if (trigger) lazyLoader.observe(trigger);
+      }
+
+      function getVisiblePatrols() {
+        const filters = getFilters();
+
+        return state.patrols
+          .filter((item) => patrolMatches(item, filters))
+          .sort((left, right) => comparePatrols(left, right, filters.sort));
+      }
+
+      function getFilters() {
+        return {
+          search: searchInput.value.trim().toLowerCase(),
+          type: typeFilter.value,
+          status: ongoingFilter.checked ? 'ongoing' : statusFilter.value,
+          sort: sortFilter.value,
+          from: fromFilter.value,
+          to: toFilter.value
+        };
+      }
+
+      function patrolMatches(item, filters) {
+        const row = normalizePatrol(item);
+        const startDate = getPatrolStartDate(item);
+        const text = [
+          row.patrolId,
+          row.patrolType,
+          row.patrolTitle,
+          row.startLocation,
+          row.endLocation,
+          item.state
+        ].join(' ').toLowerCase();
+
+        if (filters.search && !text.includes(filters.search)) return false;
+        if (filters.type && row.patrolType !== filters.type) return false;
+        if (filters.status === 'ongoing' && !isOngoingPatrol(item)) return false;
+        if (filters.status === 'open' && String(item.state || '').toLowerCase() !== 'open') return false;
+        if (filters.status === 'closed' && String(item.state || '').toLowerCase() === 'open') return false;
+        if (filters.from && (!startDate || startDate < startOfDay(filters.from))) return false;
+        if (filters.to && (!startDate || startDate > endOfDay(filters.to))) return false;
+
+        return true;
+      }
+
+      function comparePatrols(left, right, sort) {
+        const leftSerial = Number(left.serial_number || 0);
+        const rightSerial = Number(right.serial_number || 0);
+        const leftStart = getPatrolStartDate(left)?.getTime() || 0;
+        const rightStart = getPatrolStartDate(right)?.getTime() || 0;
+
+        if (sort === 'oldest') return leftSerial - rightSerial;
+        if (sort === 'start_desc') return rightStart - leftStart || rightSerial - leftSerial;
+        if (sort === 'start_asc') return leftStart - rightStart || leftSerial - rightSerial;
+        return rightSerial - leftSerial;
       }
 
       function normalizePatrol(item) {
@@ -599,6 +938,15 @@
         };
       }
 
+      function updateTypeOptions() {
+        const current = typeFilter.value;
+        const types = [...new Set(state.patrols.map((item) => normalizePatrol(item).patrolType).filter((type) => type !== '-'))].sort();
+        typeFilter.innerHTML = '<option value="">All types</option>' + types.map((type) => {
+          return `<option value="${escapeHtml(type)}">${escapeHtml(type)}</option>`;
+        }).join('');
+        if (types.includes(current)) typeFilter.value = current;
+      }
+
       function getCollection(payload) {
         const data = payload && payload.data ? payload.data : {};
         return {
@@ -609,6 +957,35 @@
 
       function latestUpdateTime(item) {
         return item.updates && item.updates[0] ? item.updates[0].time : '';
+      }
+
+      function isOngoingPatrol(item) {
+        const segments = Array.isArray(item.patrol_segments) ? item.patrol_segments : [];
+        return segments.some((segment) => {
+          return segment.time_range && segment.time_range.start_time && !segment.time_range.end_time;
+        });
+      }
+
+      function getPatrolStartDate(item) {
+        const segments = Array.isArray(item.patrol_segments) ? item.patrol_segments : [];
+        const firstSegment = segments[0] || {};
+        const value = firstValue(
+          firstSegment.time_range && firstSegment.time_range.start_time,
+          firstSegment.scheduled_start,
+          item.start_time,
+          latestUpdateTime(item)
+        );
+        if (!value || value === '-') return null;
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? null : date;
+      }
+
+      function startOfDay(value) {
+        return new Date(`${value}T00:00:00`);
+      }
+
+      function endOfDay(value) {
+        return new Date(`${value}T23:59:59.999`);
       }
 
       function firstValue(...values) {
