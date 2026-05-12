@@ -444,6 +444,94 @@
         margin-top: 8px;
       }
 
+      .report-panel {
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        margin-bottom: 20px;
+        overflow: hidden;
+      }
+
+      .report-panel[hidden] {
+        display: none;
+      }
+
+      .report-head {
+        background: var(--navy);
+        color: var(--canvas);
+        padding: 18px;
+      }
+
+      .report-head h2,
+      .report-head p {
+        margin: 0;
+      }
+
+      .report-head h2 {
+        font-size: 24px;
+        line-height: 1.2;
+      }
+
+      .report-head p {
+        font-size: 14px;
+        line-height: 1.4;
+        margin-top: 8px;
+      }
+
+      .report-body {
+        display: grid;
+        gap: 16px;
+        padding: 16px;
+      }
+
+      .report-grid {
+        display: grid;
+        gap: 12px;
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+      }
+
+      .report-card {
+        background: var(--soft);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        padding: 14px;
+      }
+
+      .report-card span {
+        display: block;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 11px;
+        font-weight: 800;
+        letter-spacing: 0;
+        text-transform: uppercase;
+      }
+
+      .report-card strong {
+        display: block;
+        font-size: 28px;
+        line-height: 1.1;
+        margin-top: 10px;
+      }
+
+      .report-table {
+        border-collapse: collapse;
+        width: 100%;
+      }
+
+      .report-table th,
+      .report-table td {
+        border-bottom: 1px solid var(--line);
+        font-size: 13px;
+        padding: 10px;
+        text-align: left;
+      }
+
+      .report-table th {
+        background: var(--soft);
+        font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+        font-size: 11px;
+        text-transform: uppercase;
+      }
+
       .row {
         background: var(--canvas);
         border-bottom: 1px solid var(--line);
@@ -537,7 +625,8 @@
 
       @media (max-width: 900px) {
         .status-strip,
-        .workspace {
+        .workspace,
+        .report-grid {
           grid-template-columns: 1fr;
         }
 
@@ -692,6 +781,7 @@
               </div>
               <p class="advanced-note">Date range harvests patrol start dates. Overnight windows match starts from the From time through 11:59 PM on each selected date.</p>
               <div class="filter-actions">
+                <button class="load-more" id="generateReportButton" type="button">Generate Report</button>
                 <button class="secondary-button" id="clearFiltersButton" type="button">Clear filters</button>
               </div>
             </div>
@@ -708,6 +798,8 @@
             <div class="list" id="content" role="tabpanel" aria-live="polite"></div>
           </div>
         </section>
+
+        <section class="report-panel" id="reportPanel" hidden aria-live="polite"></section>
       </main>
     </div>
 
@@ -735,6 +827,8 @@
       const stateDot = document.getElementById('stateDot');
       const stateLabel = document.getElementById('stateLabel');
       const tableSummary = document.getElementById('tableSummary');
+      const reportPanel = document.getElementById('reportPanel');
+      const generateReportButton = document.getElementById('generateReportButton');
       const searchInput = document.getElementById('searchInput');
       const trackedByInput = document.getElementById('trackedByInput');
       const trackedByChips = document.getElementById('trackedByChips');
@@ -758,6 +852,7 @@
       });
 
       refreshButton.addEventListener('click', () => refreshAll());
+      generateReportButton.addEventListener('click', generateReport);
       clearFiltersButton.addEventListener('click', clearFilters);
       trackedByInput.addEventListener('input', renderTrackerSuggestions);
       trackedByInput.addEventListener('keydown', handleTrackerKeydown);
@@ -854,6 +949,118 @@
         renderTrackerChips();
         renderTrackerSuggestions();
         render();
+      }
+
+      function generateReport() {
+        const filters = getFilters();
+        const rows = getVisiblePatrols();
+        const report = buildReport(rows, filters);
+        renderReport(report);
+        reportPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
+      function buildReport(rows, filters) {
+        const typeTotals = new Map();
+        let totalMs = 0;
+        let totalKm = 0;
+        let distanceRecordCount = 0;
+
+        rows.forEach((item) => {
+          const normalized = normalizePatrol(item);
+          const type = normalized.patrolType || '-';
+          const durationMs = getPatrolDurationMilliseconds(item);
+          const distanceKm = getPatrolKilometers(item);
+
+          totalMs += durationMs;
+          if (distanceKm !== null) {
+            totalKm += distanceKm;
+            distanceRecordCount += 1;
+          }
+
+          const current = typeTotals.get(type) || { type, count: 0, milliseconds: 0, kilometers: 0, distanceRecordCount: 0 };
+          current.count += 1;
+          current.milliseconds += durationMs;
+          if (distanceKm !== null) {
+            current.kilometers += distanceKm;
+            current.distanceRecordCount += 1;
+          }
+          typeTotals.set(type, current);
+        });
+
+        return {
+          generatedAt: new Date(),
+          coverage: describeCoverage(filters),
+          rows,
+          totalPatrols: rows.length,
+          totalMs,
+          totalKm,
+          distanceRecordCount,
+          typeTotals: [...typeTotals.values()].sort((left, right) => left.type.localeCompare(right.type))
+        };
+      }
+
+      function renderReport(report) {
+        const distanceNote = report.distanceRecordCount
+          ? `${report.distanceRecordCount.toLocaleString()} patrols include distance values`
+          : 'Distance values were not returned by the loaded patrol records';
+
+        reportPanel.hidden = false;
+        reportPanel.innerHTML = `
+          <div class="report-head">
+            <h2>Blue Alliance</h2>
+            <p>Patrol Summary Report - ${escapeHtml(report.coverage)}</p>
+            <p>As of ${escapeHtml(formatFullDateTime(report.generatedAt))}</p>
+          </div>
+          <div class="report-body">
+            <div class="report-grid">
+              <article class="report-card">
+                <span>Total patrols</span>
+                <strong>${report.totalPatrols.toLocaleString()}</strong>
+              </article>
+              <article class="report-card">
+                <span>Total hours</span>
+                <strong>${escapeHtml(formatReportHours(report.totalMs))}</strong>
+              </article>
+              <article class="report-card">
+                <span>Total kilometers</span>
+                <strong>${report.totalKm.toFixed(2)} km</strong>
+              </article>
+            </div>
+            <p class="advanced-note">${escapeHtml(distanceNote)}</p>
+            ${renderTypeSubtotalTable(report.typeTotals)}
+          </div>
+        `;
+      }
+
+      function renderTypeSubtotalTable(typeTotals) {
+        if (!typeTotals.length) {
+          return '<p class="advanced-note">No patrols matched the current filters.</p>';
+        }
+
+        const rows = typeTotals.map((item) => {
+          return `
+            <tr>
+              <td>${escapeHtml(item.type)}</td>
+              <td>${item.count.toLocaleString()}</td>
+              <td>${escapeHtml(formatReportHours(item.milliseconds))}</td>
+              <td>${item.kilometers.toFixed(2)} km</td>
+            </tr>
+          `;
+        }).join('');
+
+        return `
+          <table class="report-table" aria-label="Patrol type subtotals">
+            <thead>
+              <tr>
+                <th>Patrol type</th>
+                <th>Patrols</th>
+                <th>Total hours</th>
+                <th>Total kilometers</th>
+              </tr>
+            </thead>
+            <tbody>${rows}</tbody>
+          </table>
+        `;
       }
 
       function handleTrackerKeydown(event) {
@@ -1153,7 +1360,7 @@
           patrolTitle: firstValue(item.title, item.objective, item.serial_number ? `Patrol ${item.serial_number}` : ''),
           trackedBy: getTrackedBy(segments),
           objectiveDetails: getObjectiveDetails(item),
-          totalHours: formatHours(totalPatrolMilliseconds(segments, startTime, endTime)),
+          totalHours: formatHours(getPatrolDurationMilliseconds(item)),
           startDate: formatDateTime(startTime) || '-',
           endDate: formatDateTime(endTime) || '-',
           startLocation: formatLocation(firstSegment.start_location || item.start_location),
@@ -1291,6 +1498,25 @@
         return values.find((value) => value !== undefined && value !== null && value !== '') || '-';
       }
 
+      function getPatrolDurationMilliseconds(item) {
+        const segments = Array.isArray(item.patrol_segments) ? item.patrol_segments : [];
+        const firstSegment = segments[0] || {};
+        const lastSegment = segments[segments.length - 1] || firstSegment;
+        const startTime = firstValue(
+          firstSegment.time_range && firstSegment.time_range.start_time,
+          firstSegment.scheduled_start,
+          item.start_time,
+          latestUpdateTime(item)
+        );
+        const endTime = firstValue(
+          lastSegment.time_range && lastSegment.time_range.end_time,
+          lastSegment.scheduled_end,
+          item.end_time
+        );
+
+        return totalPatrolMilliseconds(segments, startTime, endTime);
+      }
+
       function totalPatrolMilliseconds(segments, fallbackStart, fallbackEnd) {
         const total = segments.reduce((sum, segment) => {
           const start = segment.time_range && segment.time_range.start_time;
@@ -1308,6 +1534,45 @@
         return 0;
       }
 
+      function getPatrolKilometers(item) {
+        const segments = Array.isArray(item.patrol_segments) ? item.patrol_segments : [];
+        const values = [distanceValueToKm(item), ...segments.map(distanceValueToKm)].filter((value) => value !== null);
+        if (!values.length) return null;
+        return values.reduce((sum, value) => sum + value, 0);
+      }
+
+      function distanceValueToKm(source) {
+        if (!source || typeof source !== 'object') return null;
+
+        const kmValue = firstNumericValue(source, [
+          'distance_km',
+          'total_distance_km',
+          'patrol_distance_km',
+          'length_km',
+          'kilometers'
+        ]);
+        if (kmValue !== null) return kmValue;
+
+        const meterValue = firstNumericValue(source, [
+          'distance_m',
+          'total_distance_m',
+          'patrol_distance_m',
+          'length_m',
+          'meters'
+        ]);
+        if (meterValue !== null) return meterValue / 1000;
+
+        return null;
+      }
+
+      function firstNumericValue(source, keys) {
+        for (const key of keys) {
+          const value = Number(source[key]);
+          if (Number.isFinite(value)) return value;
+        }
+        return null;
+      }
+
       function formatHours(milliseconds) {
         if (!milliseconds || milliseconds < 0) return '-';
         const totalMinutes = Math.floor(milliseconds / 60000);
@@ -1317,6 +1582,11 @@
         if (hours && minutes) return `${hours}h ${minutes}m`;
         if (hours) return `${hours}h`;
         return `${minutes}m`;
+      }
+
+      function formatReportHours(milliseconds) {
+        if (!milliseconds || milliseconds < 0) return '0m';
+        return formatHours(milliseconds);
       }
 
       function formatLabel(value) {
@@ -1354,6 +1624,39 @@
           hour: '2-digit',
           minute: '2-digit'
         });
+      }
+
+      function formatFullDateTime(value) {
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return '';
+        return date.toLocaleString([], {
+          year: 'numeric',
+          month: 'short',
+          day: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+      }
+
+      function describeCoverage(filters) {
+        const parts = [];
+
+        if (filters.from || filters.to) {
+          parts.push(`Coverage ${filters.from || 'start'} to ${filters.to || 'latest'}`);
+        } else {
+          parts.push('Loaded patrol coverage');
+        }
+
+        if (filters.timeWindowEnabled) {
+          parts.push(`starts ${filters.timeFrom || '--:--'}-${filters.timeTo || '--:--'}`);
+        }
+
+        if (filters.type) parts.push(`type: ${filters.type}`);
+        if (filters.status) parts.push(`status: ${filters.status}`);
+        if (filters.trackers.length) parts.push(`tracked by: ${filters.trackers.join(', ')}`);
+        if (filters.search) parts.push(`search: ${filters.search}`);
+
+        return parts.join(' / ');
       }
 
       function loadingMarkup() {
