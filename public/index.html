@@ -809,6 +809,7 @@
       const state = {
         loading: false,
         loadingMore: false,
+        rangeHarvesting: false,
         health: null,
         patrols: [],
         totalCount: null,
@@ -874,6 +875,7 @@
         state.error = null;
         state.loading = true;
         state.loadingMore = false;
+        state.rangeHarvesting = false;
         state.patrols = [];
         state.totalCount = null;
         state.page = 0;
@@ -901,16 +903,54 @@
         state.error = null;
         state.loading = true;
         state.loadingMore = false;
+        state.rangeHarvesting = false;
         state.patrols = [];
         state.totalCount = null;
         state.page = 0;
         state.hasMore = true;
         render();
 
-        await loadNextPage(false);
+        if (hasDateRangeFilter()) {
+          await harvestDateRangePatrols(false);
+        } else {
+          await loadNextPage(false);
+        }
 
         state.loading = false;
         render();
+      }
+
+      async function harvestDateRangePatrols(shouldRender = true) {
+        state.rangeHarvesting = true;
+        state.hasMore = false;
+        state.totalCount = 0;
+        if (shouldRender) render();
+
+        try {
+          let page = 1;
+          let hasNext = true;
+          const maxPages = 50;
+
+          while (hasNext && page <= maxPages) {
+            const response = await fetch(`/api/patrols?page_size=200&page=${page}`);
+            const json = await response.json();
+            if (!response.ok) throw new Error(json.error || 'Request failed');
+
+            const collection = getCollection(json);
+            appendPatrols(collection.results.filter((patrol) => patrolStartsInSelectedDateRange(patrol)));
+            state.page = page;
+            state.totalCount = state.patrols.length;
+            hasNext = Boolean(json.data && json.data.next);
+            if (shouldRender) render();
+            page += 1;
+          }
+        } catch (error) {
+          state.error = error.message;
+        } finally {
+          state.rangeHarvesting = false;
+          state.totalCount = state.patrols.length;
+          if (shouldRender) render();
+        }
       }
 
       async function loadNextPage(shouldRender = true) {
@@ -921,15 +961,14 @@
 
         try {
           const nextPage = state.page + 1;
-          const isRangeHarvest = hasDateRangeFilter();
-          const response = await fetch(buildPatrolRequestUrl(nextPage, isRangeHarvest));
+          const response = await fetch(`/api/patrols?page_size=${PAGE_SIZE}&page=${nextPage}`);
           const json = await response.json();
           if (!response.ok) throw new Error(json.error || 'Request failed');
 
           const collection = getCollection(json);
           state.totalCount = collection.count;
-          state.page = isRangeHarvest ? 1 : nextPage;
-          state.hasMore = isRangeHarvest ? false : Boolean(json.data && json.data.next);
+          state.page = nextPage;
+          state.hasMore = Boolean(json.data && json.data.next);
           appendPatrols(collection.results);
           updateTypeOptions();
           renderTrackerSuggestions();
@@ -940,21 +979,6 @@
           state.loadingMore = false;
           if (shouldRender) render();
         }
-      }
-
-      function buildPatrolRequestUrl(nextPage, isRangeHarvest) {
-        if (!isRangeHarvest) {
-          return `/api/patrols?page_size=${PAGE_SIZE}&page=${nextPage}`;
-        }
-
-        const params = new URLSearchParams({
-          all: 'true',
-          max_pages: '50',
-          page_size: '200'
-        });
-        if (fromFilter.value) params.set('from_date', fromFilter.value);
-        if (toFilter.value) params.set('to_date', toFilter.value);
-        return `/api/patrols?${params.toString()}`;
       }
 
       function hasDateRangeFilter() {
@@ -1176,11 +1200,11 @@
         document.getElementById('displayedMetric').textContent = formatCount(visibleRows.length);
         document.getElementById('checkedMetric').textContent = formatTime(state.health && state.health.checkedAt);
         tableSummary.textContent = filtered
-          ? `${visibleRows.length.toLocaleString()} shown / ${state.patrols.length.toLocaleString()} loaded. Filtered results pause auto-loading; use Load more if needed.`
+          ? `${visibleRows.length.toLocaleString()} shown / ${state.patrols.length.toLocaleString()} loaded. ${state.rangeHarvesting ? `Harvesting date range, page ${state.page + 1}...` : 'Filtered results pause auto-loading.'}`
           : `${visibleRows.length.toLocaleString()} shown / ${state.patrols.length.toLocaleString()} loaded. Scroll the table to keep loading older patrols.`;
 
         stateDot.classList.toggle('error', hasError || !isConnected);
-        stateLabel.textContent = state.loading ? 'Loading' : state.loadingMore ? 'Loading more' : isConnected ? 'Connected' : 'Needs attention';
+        stateLabel.textContent = state.rangeHarvesting ? 'Harvesting range' : state.loading ? 'Loading' : state.loadingMore ? 'Loading more' : isConnected ? 'Connected' : 'Needs attention';
 
         if (state.loading && !state.patrols.length) {
           content.innerHTML = loadingMarkup();
@@ -1485,6 +1509,14 @@
         if (!value || value === '-') return null;
         const date = new Date(value);
         return Number.isNaN(date.getTime()) ? null : date;
+      }
+
+      function patrolStartsInSelectedDateRange(item) {
+        const startDate = getPatrolStartDate(item);
+        if (!startDate) return false;
+        if (fromFilter.value && startDate < startOfDay(fromFilter.value)) return false;
+        if (toFilter.value && startDate > endOfDay(toFilter.value)) return false;
+        return true;
       }
 
       function startOfDay(value) {
