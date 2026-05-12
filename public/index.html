@@ -311,7 +311,7 @@
 
       .data-table {
         border-collapse: collapse;
-        min-width: 1120px;
+        min-width: 1460px;
         width: 100%;
       }
 
@@ -633,7 +633,7 @@
             <div class="panel-head">
               <div>
                 <p class="row-title">Patrol index</p>
-                <p class="row-meta" id="tableSummary">Patrol ID / Patrol Type / Patrol Title / Total Hours / Start Date / End Date / Start Location / End Location</p>
+                <p class="row-meta" id="tableSummary">Patrol ID / Patrol Type / Patrol Title / Tracked By / Objective / Details / Total Hours / Start Date / End Date / Start Location / End Location</p>
               </div>
               <div class="state-pill"><span class="dot" id="stateDot"></span><span id="stateLabel">Loading</span></div>
             </div>
@@ -827,6 +827,8 @@
               <td class="id-cell">${escapeHtml(row.patrolId)}</td>
               <td>${escapeHtml(row.patrolType)}</td>
               <td>${escapeHtml(row.patrolTitle)}</td>
+              <td>${escapeHtml(row.trackedBy)}</td>
+              <td>${escapeHtml(row.objectiveDetails)}</td>
               <td class="number-cell">${escapeHtml(row.totalHours)}</td>
               <td>${escapeHtml(row.startDate)}</td>
               <td>${escapeHtml(row.endDate)}</td>
@@ -843,6 +845,8 @@
                 <th>Patrol ID</th>
                 <th>Patrol Type</th>
                 <th>Patrol Title</th>
+                <th>Tracked By</th>
+                <th>Objective / Details</th>
                 <th>Total Hours</th>
                 <th>Start Date</th>
                 <th>End Date</th>
@@ -864,7 +868,7 @@
         if (state.loadingMore) {
           return `
             <tr class="load-row">
-              <td colspan="8">
+              <td colspan="10">
                 Loading older patrols...
                 <span class="load-note">${state.patrols.length.toLocaleString()} loaded so far</span>
               </td>
@@ -875,7 +879,7 @@
         if (!state.hasMore) {
           return `
             <tr class="load-row">
-              <td colspan="8">
+              <td colspan="10">
                 End of loaded patrol feed
                 <span class="load-note">${state.patrols.length.toLocaleString()} patrols loaded</span>
               </td>
@@ -885,7 +889,7 @@
 
         return `
           <tr class="load-row" ${filtered ? '' : 'id="loadTrigger"'}>
-            <td colspan="8">
+            <td colspan="10">
               <button class="load-more" type="button" onclick="loadNextPage()">Load more source patrols</button>
               <span class="load-note">${filtered ? 'Auto-loading is paused while filters are active' : 'Scroll here to continue lazy loading older patrols'}</span>
             </td>
@@ -940,6 +944,8 @@
           row.patrolId,
           row.patrolType,
           row.patrolTitle,
+          row.trackedBy,
+          row.objectiveDetails,
           row.startLocation,
           row.endLocation,
           item.state
@@ -993,12 +999,45 @@
           patrolId: item.serial_number || item.id || '-',
           patrolType: formatLabel(firstValue(firstSegment.patrol_type, item.patrol_type, item.type)),
           patrolTitle: firstValue(item.title, item.objective, item.serial_number ? `Patrol ${item.serial_number}` : ''),
+          trackedBy: getTrackedBy(segments),
+          objectiveDetails: getObjectiveDetails(item),
           totalHours: formatHours(totalPatrolMilliseconds(segments, startTime, endTime)),
           startDate: formatDateTime(startTime) || '-',
           endDate: formatDateTime(endTime) || '-',
           startLocation: formatLocation(firstSegment.start_location || item.start_location),
           endLocation: formatLocation(lastSegment.end_location || item.end_location)
         };
+      }
+
+      function getTrackedBy(segments) {
+        const names = [...new Set(segments.map((segment) => {
+          const leader = segment.leader || {};
+          return firstValue(
+            leader.name,
+            leader.common_name,
+            leader.username,
+            leader.first_name && leader.last_name ? `${leader.first_name} ${leader.last_name}` : ''
+          );
+        }).filter((name) => name && name !== '-'))];
+
+        return names.length ? names.join(', ') : '-';
+      }
+
+      function getObjectiveDetails(item) {
+        const notes = Array.isArray(item.notes)
+          ? item.notes.map((note) => {
+              if (typeof note === 'string') return note;
+              return firstValue(note.text, note.note, note.message, note.content, '');
+            }).filter(Boolean)
+          : [];
+
+        return firstValue(
+          item.objective,
+          item.details,
+          item.description,
+          notes.join(' / '),
+          item.title
+        );
       }
 
       function updateTypeOptions() {
