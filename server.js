@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 import eventsHandler from './api/events.js';
 import healthHandler from './api/health.js';
+import patrolKilometersHandler from './api/patrol-kilometers.js';
 import patrolsHandler from './api/patrols.js';
 import patrolsUpdateHandler from './api/patrols-update.js';
 import syncStatusHandler from './api/sync-status.js';
@@ -18,6 +19,7 @@ const PUBLIC_DIR = join(ROOT, 'public');
 const apiRoutes = [
   { pattern: /^\/api\/health\/?$/, handler: healthHandler },
   { pattern: /^\/api\/events\/?$/, handler: eventsHandler },
+  { pattern: /^\/api\/patrol-kilometers\/?$/, handler: patrolKilometersHandler },
   { pattern: /^\/api\/patrols\/?$/, handler: patrolsHandler },
   { pattern: /^\/api\/patrols-update\/?$/, handler: patrolsUpdateHandler },
   { pattern: /^\/api\/sync-status\/?$/, handler: syncStatusHandler }

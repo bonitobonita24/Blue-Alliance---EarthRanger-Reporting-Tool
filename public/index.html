@@ -1023,7 +1023,7 @@
             <div class="panel-head">
               <div>
                 <p class="row-title">Patrol index</p>
-                <p class="row-meta" id="tableSummary">Patrol ID / Patrol Type / Patrol Title / Tracked By / Total Hours / Kilometers / Start Date / End Date / Start Location / End Location</p>
+                <p class="row-meta" id="tableSummary">Patrol ID / Patrol Type / Patrol Title / Description / Tracked By / Total Hours / Start Date / End Date / Start Location / End Location</p>
               </div>
             </div>
             <div class="list" id="content" role="tabpanel" aria-live="polite"></div>
@@ -1052,6 +1052,9 @@
         error: null,
         selectedTrackers: []
       };
+
+      const trackKmCache = new Map();
+      let kmFetchController = null;
 
       const endpoints = {
         health: '/api/health'
@@ -1124,15 +1127,8 @@
         control.addEventListener('change', render);
       });
 
-      function onDateRangeChange() {
-        render();
-        if (fromFilter.value && toFilter.value) {
-          harvestDateRangePatrols();
-        }
-      }
-
-      fromFilter.addEventListener('change', onDateRangeChange);
-      toFilter.addEventListener('change', onDateRangeChange);
+      fromFilter.addEventListener('change', render);
+      toFilter.addEventListener('change', render);
 
       setDefaultDateRange();
       refreshAll();
@@ -1148,17 +1144,10 @@
         state.hasMore = true;
         render();
 
-        await loadHealth();
+        await Promise.all([loadHealth(), loadCachedPatrols(false)]);
+        if (!state.patrols.length) await loadNextPage(false);
 
-        if (fromFilter.value && toFilter.value) {
-          state.loading = false;
-          await harvestDateRangePatrols(false);
-        } else {
-          await loadCachedPatrols(false);
-          if (!state.patrols.length) await loadNextPage(false);
-          state.loading = false;
-        }
-
+        state.loading = false;
         render();
       }
 
@@ -1199,6 +1188,31 @@
         restoreTableScrollPosition(scrollPosition);
       }
 
+      async function fetchDateRangePatrols() {
+        const results = [];
+        let page = 1;
+        let hasNext = true;
+        const maxPages = 50;
+
+        const params = new URLSearchParams({ page_size: '200', page: '1', sort_by: '-serial_number' });
+        if (fromFilter.value) params.set('since', `${fromFilter.value}T00:00:00`);
+        if (toFilter.value) params.set('until', `${toFilter.value}T23:59:59`);
+
+        while (hasNext && page <= maxPages) {
+          params.set('page', String(page));
+          const response = await fetch(`/api/patrols?${params}`);
+          const json = await response.json();
+          if (!response.ok) throw new Error(json.error || 'Request failed');
+
+          const collection = getCollection(json);
+          results.push(...collection.results);
+          hasNext = Boolean(json.data && json.data.next);
+          page += 1;
+        }
+
+        return results;
+      }
+
       async function harvestDateRangePatrols(shouldRender = true) {
         state.rangeHarvesting = true;
         state.hasMore = false;
@@ -1222,7 +1236,7 @@
             if (!response.ok) throw new Error(json.error || 'Request failed');
 
             const collection = getCollection(json);
-            appendPatrols(collection.results.filter((patrol) => patrolStartsInSelectedDateRange(patrol)));
+            appendPatrols(collection.results);
             state.page = page;
             state.totalCount = state.patrols.length;
             hasNext = Boolean(json.data && json.data.next);
@@ -1336,12 +1350,48 @@
         refreshPatrolsOnly();
       }
 
-      function generateReport() {
-        const filters = getFilters();
+      async function generateReport() {
         const rows = getVisiblePatrols();
+        const filters = getFilters();
+        generateReportButton.disabled = true;
+        generateReportButton.textContent = 'Fetching track data…';
+        try {
+          await fetchAndAwaitKilometers(rows);
+        } catch (_) { /* best effort */ }
+        generateReportButton.disabled = false;
+        generateReportButton.textContent = 'Generate Report';
         const report = buildReport(rows, filters);
         renderReport(report);
         reportPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+
+      async function fetchAndAwaitKilometers(rows) {
+        const uncachedIds = rows
+          .map((item) => item.id)
+          .filter((id) => id && !trackKmCache.has(id));
+        if (!uncachedIds.length) return;
+
+        const batchSize = 20;
+        const batches = [];
+        for (let i = 0; i < uncachedIds.length; i += batchSize) {
+          batches.push(uncachedIds.slice(i, i + batchSize));
+        }
+
+        for (const batch of batches) {
+          try {
+            const response = await fetch('/api/patrol-kilometers', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ patrol_ids: batch })
+            });
+            if (!response.ok) continue;
+            const data = await response.json();
+            if (!data.results) continue;
+            for (const [id, km] of Object.entries(data.results)) {
+              trackKmCache.set(id, km);
+            }
+          } catch (_) { /* best effort */ }
+        }
       }
 
       function buildReport(rows, filters) {
@@ -1575,6 +1625,7 @@
         content.innerHTML = renderPatrolTable(visibleRows);
         observeLoadTrigger(filtered);
         syncTableScrollProxy();
+        fetchVisiblePatrolKilometers(visibleRows);
       }
 
       function syncTableScrollProxy() {
@@ -1698,7 +1749,9 @@
 
         const tableRows = rows.map((item) => {
           const row = normalizePatrol(item);
+          const patrolUuid = item.id || '';
           const distanceKm = getPatrolKilometers(item);
+          const kmDisplay = distanceKm !== null ? distanceKm.toFixed(2) + ' km' : (patrolUuid ? '<span class="km-pending">...</span>' : '-');
           return `
             <tr>
               <td class="id-cell">${escapeHtml(row.patrolId)}</td>
@@ -1706,7 +1759,7 @@
               <td>${escapeHtml(row.patrolTitle)}</td>
               <td>${escapeHtml(row.trackedBy)}</td>
               <td class="number-cell">${escapeHtml(row.totalHours)}</td>
-              <td class="number-cell">${distanceKm !== null ? distanceKm.toFixed(2) + ' km' : '-'}</td>
+              <td class="number-cell km-cell" data-patrol-id="${escapeHtml(patrolUuid)}">${kmDisplay}</td>
               <td>${escapeHtml(row.startDate)}</td>
               <td>${escapeHtml(row.endDate)}</td>
               <td>${escapeHtml(row.startLocation)}</td>
@@ -1721,7 +1774,7 @@
               <tr>
                 <th>Patrol ID</th>
                 <th>Patrol Type</th>
-                <th>Patrol Title</th>
+                <th>Patrol Title / Description</th>
                 <th>Tracked By</th>
                 <th>Total Hours</th>
                 <th>Kilometers</th>
@@ -2073,8 +2126,52 @@
       function getPatrolKilometers(item) {
         const segments = Array.isArray(item.patrol_segments) ? item.patrol_segments : [];
         const values = [distanceValueToKm(item), ...segments.map(distanceValueToKm)].filter((value) => value !== null);
-        if (!values.length) return null;
-        return values.reduce((sum, value) => sum + value, 0);
+        if (values.length) return values.reduce((sum, value) => sum + value, 0);
+
+        const patrolId = item.id || '';
+        if (patrolId && trackKmCache.has(patrolId)) return trackKmCache.get(patrolId);
+
+        return null;
+      }
+
+      function fetchVisiblePatrolKilometers(rows) {
+        if (kmFetchController) kmFetchController.abort();
+        kmFetchController = new AbortController();
+        const signal = kmFetchController.signal;
+
+        const uncachedIds = rows
+          .map((item) => item.id)
+          .filter((id) => id && !trackKmCache.has(id));
+
+        if (!uncachedIds.length) return;
+
+        const batchSize = 20;
+        for (let i = 0; i < uncachedIds.length; i += batchSize) {
+          const batch = uncachedIds.slice(i, i + batchSize);
+          fetchKilometerBatch(batch, signal);
+        }
+      }
+
+      async function fetchKilometerBatch(patrolIds, signal) {
+        try {
+          const response = await fetch('/api/patrol-kilometers', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ patrol_ids: patrolIds }),
+            signal
+          });
+          if (!response.ok) return;
+          const data = await response.json();
+          if (!data.results) return;
+
+          for (const [id, km] of Object.entries(data.results)) {
+            trackKmCache.set(id, km);
+            const cell = content.querySelector(`.km-cell[data-patrol-id="${CSS.escape(id)}"]`);
+            if (cell) cell.textContent = km !== null ? km.toFixed(2) + ' km' : '-';
+          }
+        } catch (error) {
+          if (error.name !== 'AbortError') console.warn('km fetch failed:', error.message);
+        }
       }
 
       function distanceValueToKm(source) {
