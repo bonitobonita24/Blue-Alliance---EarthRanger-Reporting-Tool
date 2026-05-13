@@ -524,6 +524,29 @@
         z-index: 1;
       }
 
+      .data-table th.sortable {
+        cursor: pointer;
+        user-select: none;
+        white-space: nowrap;
+      }
+
+      .data-table th.sortable:hover {
+        background: var(--muted);
+      }
+
+      .data-table th.sort-active {
+        background: var(--muted);
+        color: var(--accent);
+      }
+
+      .data-table tfoot td {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--dim);
+        padding: 8px;
+        text-align: right;
+      }
+
       .data-table th:last-child,
       .data-table td:last-child {
         border-right: 0;
@@ -976,15 +999,7 @@
                   <option value="closed">Closed</option>
                 </select>
               </div>
-              <div class="field">
-                <label for="sortFilter">Sort</label>
-                <select id="sortFilter">
-                  <option value="start_desc">Newest start date first</option>
-                  <option value="start_asc">Oldest start date first</option>
-                  <option value="latest">Latest patrol ID first</option>
-                  <option value="oldest">Oldest patrol ID first</option>
-                </select>
-              </div>
+              <!-- Sort is now via clickable column headers in the table -->
               <div class="field">
                 <label for="fromFilter">From</label>
                 <input id="fromFilter" type="date" />
@@ -1043,19 +1058,16 @@
     </div>
 
     <script>
-      const PAGE_SIZE = 100;
 
       const state = {
         loading: false,
-        loadingMore: false,
-        rangeHarvesting: false,
         health: null,
         patrols: [],
         totalCount: null,
-        page: 0,
-        hasMore: true,
         error: null,
-        selectedTrackers: []
+        selectedTrackers: [],
+        sortColumn: 'startDate',
+        sortDir: 'desc'
       };
 
       const trackKmCache = new Map();
@@ -1083,7 +1095,6 @@
       const trackedBySuggestions = document.getElementById('trackedBySuggestions');
       const typeFilter = document.getElementById('typeFilter');
       const statusFilter = document.getElementById('statusFilter');
-      const sortFilter = document.getElementById('sortFilter');
       const fromFilter = document.getElementById('fromFilter');
       const toFilter = document.getElementById('toFilter');
       const excludeTestFilter = document.getElementById('excludeTestFilter');
@@ -1093,12 +1104,6 @@
       const timeToFilter = document.getElementById('timeToFilter');
       const clearFiltersButton = document.getElementById('clearFiltersButton');
 
-      const lazyLoader = new IntersectionObserver((entries) => {
-        if (entries.some((entry) => entry.isIntersecting)) loadNextPage();
-      }, {
-        root: content,
-        rootMargin: '240px'
-      });
 
       let syncingTableScroll = false;
 
@@ -1127,10 +1132,9 @@
       trackedByInput.addEventListener('blur', () => {
         setTimeout(() => trackedBySuggestions.classList.remove('is-open'), 140);
       });
-      setInterval(autoRefreshPatrols, 60000);
-      setInterval(autoCacheRefresh, 180000);
+      setInterval(autoRefreshPatrols, 30000);
 
-      [searchInput, typeFilter, statusFilter, sortFilter, excludeTestFilter, ongoingFilter, timeWindowEnabled, timeFromFilter, timeToFilter].forEach((control) => {
+      [searchInput, typeFilter, statusFilter, excludeTestFilter, ongoingFilter, timeWindowEnabled, timeFromFilter, timeToFilter].forEach((control) => {
         control.addEventListener('input', render);
         control.addEventListener('change', render);
       });
@@ -1144,16 +1148,11 @@
       async function refreshAll() {
         state.error = null;
         state.loading = true;
-        state.loadingMore = false;
-        state.rangeHarvesting = false;
         state.patrols = [];
         state.totalCount = null;
-        state.page = 0;
-        state.hasMore = true;
         render();
 
         await Promise.all([loadHealth(), loadCachedPatrols(false)]);
-        if (!state.patrols.length) await loadNextPage(false);
 
         state.loading = false;
         render();
@@ -1173,25 +1172,20 @@
       async function refreshPatrolsOnly() {
         state.error = null;
         state.loading = true;
-        state.loadingMore = false;
-        state.rangeHarvesting = false;
         state.patrols = [];
         state.totalCount = null;
-        state.page = 0;
-        state.hasMore = true;
         render();
 
         await loadCachedPatrols(false);
-        if (!state.patrols.length) await loadNextPage(false);
 
         state.loading = false;
         render();
       }
 
       async function autoRefreshPatrols() {
-        if (state.loading || state.loadingMore || state.rangeHarvesting) return;
+        if (state.loading) return;
         const scrollPosition = getTableScrollPosition();
-        await loadCachedPatrols(false, { updatePage: false });
+        await loadCachedPatrols(false);
         render();
         restoreTableScrollPosition(scrollPosition);
       }
@@ -1260,47 +1254,16 @@
         }
       }
 
-      async function loadNextPage(shouldRender = true) {
-        if (state.loadingMore || !state.hasMore) return;
 
-        state.loadingMore = true;
-        if (shouldRender) render();
-
+      async function loadCachedPatrols(shouldRender = true) {
         try {
-          const nextPage = state.page + 1;
-          const response = await fetch(`/api/patrols?page_size=${PAGE_SIZE}&page=${nextPage}`);
+          const response = await fetch('/api/patrols?source=cache&page_size=100000&page=1');
           const json = await response.json();
           if (!response.ok) throw new Error(json.error || 'Request failed');
 
           const collection = getCollection(json);
+          state.patrols = collection.results;
           state.totalCount = collection.count;
-          state.page = nextPage;
-          state.hasMore = Boolean(json.data && json.data.next);
-          appendPatrols(collection.results);
-          updateTypeOptions();
-          renderTrackerSuggestions();
-        } catch (error) {
-          state.error = error.message;
-          state.hasMore = false;
-        } finally {
-          state.loadingMore = false;
-          if (shouldRender) render();
-        }
-      }
-
-      async function loadCachedPatrols(shouldRender = true, options = {}) {
-        const { updatePage = true } = options;
-
-        try {
-          const response = await fetch('/api/patrols?source=cache&page_size=10000&page=1&sort_by=-start_time');
-          const json = await response.json();
-          if (!response.ok) throw new Error(json.error || 'Request failed');
-
-          const collection = getCollection(json);
-          state.totalCount = collection.count;
-          if (updatePage) state.page = Math.ceil(collection.count / PAGE_SIZE);
-          state.hasMore = true;
-          appendPatrols(collection.results);
           updateTypeOptions();
           renderTrackerSuggestions();
         } catch (error) {
@@ -1323,19 +1286,6 @@
         toFilter.value = localDateKey(today);
       }
 
-      function appendPatrols(rows) {
-        const seen = new Map(state.patrols.map((item, index) => [getPatrolIdentity(item), index]));
-        rows.forEach((item) => {
-          const identity = getPatrolIdentity(item);
-          if (seen.has(identity)) {
-            state.patrols[seen.get(identity)] = item;
-          } else {
-            state.patrols.push(item);
-            seen.set(identity, state.patrols.length - 1);
-          }
-        });
-      }
-
       function getPatrolIdentity(item) {
         return String(item.id || item.serial_number || '');
       }
@@ -1346,7 +1296,6 @@
         state.selectedTrackers = [];
         typeFilter.value = '';
         statusFilter.value = '';
-        sortFilter.value = 'start_desc';
         fromFilter.value = '';
         toFilter.value = '';
         excludeTestFilter.checked = true;
@@ -1354,24 +1303,23 @@
         timeWindowEnabled.checked = false;
         timeFromFilter.value = '22:00';
         timeToFilter.value = '07:00';
+        state.sortColumn = 'startDate';
+        state.sortDir = 'desc';
         renderTrackerChips();
         renderTrackerSuggestions();
-        refreshPatrolsOnly();
+        render();
       }
 
       async function refreshCache() {
         const btn = document.getElementById('cacheRefreshButton');
         btn.disabled = true;
-        btn.textContent = 'Clearing cache…';
+        btn.textContent = 'Syncing from EarthRanger…';
         try {
           const response = await fetch('/api/cache-refresh', { method: 'POST' });
           const result = await response.json();
           if (!response.ok) throw new Error(result.error || 'Refresh failed');
-          state.patrols = [];
-          state.page = 0;
-          state.hasMore = true;
           trackKmCache.clear();
-          btn.textContent = `Synced ${result.sync?.cache?.totalCached || 0} patrols`;
+          btn.textContent = `Synced ${result.sync?.totalSaved || 0} patrols`;
           await refreshPatrolsOnly();
         } catch (error) {
           btn.textContent = 'Refresh failed';
@@ -1380,29 +1328,6 @@
         setTimeout(() => { btn.disabled = false; btn.textContent = 'Refresh Cache'; }, 3000);
       }
 
-      async function autoCacheRefresh() {
-        if (state.loading || state.loadingMore || state.rangeHarvesting) return;
-        const btn = document.getElementById('cacheRefreshButton');
-        if (btn.disabled) return;
-        try {
-          btn.disabled = true;
-          btn.textContent = 'Auto-syncing…';
-          const response = await fetch('/api/cache-refresh', { method: 'POST' });
-          const result = await response.json();
-          if (!response.ok) throw new Error(result.error || 'Refresh failed');
-          const scrollPosition = getTableScrollPosition();
-          state.patrols = [];
-          state.page = 0;
-          state.hasMore = true;
-          trackKmCache.clear();
-          await refreshPatrolsOnly();
-          restoreTableScrollPosition(scrollPosition);
-          btn.textContent = `Synced ${result.sync?.cache?.totalCached || 0}`;
-        } catch (_) {
-          btn.textContent = 'Refresh Cache';
-        }
-        setTimeout(() => { btn.disabled = false; btn.textContent = 'Refresh Cache'; }, 2000);
-      }
 
       async function generateReport() {
         const rows = getVisiblePatrols();
@@ -1840,7 +1765,7 @@
         tableSummary.textContent = formatResultSummary(visibleRows.length, filters);
 
         if (stateDot) stateDot.classList.toggle('error', hasError || !isConnected);
-        if (stateLabel) stateLabel.textContent = state.rangeHarvesting ? 'Harvesting range' : state.loading ? 'Loading' : state.loadingMore ? 'Loading more' : isConnected ? 'Connected' : 'Needs attention';
+        if (stateLabel) stateLabel.textContent = state.loading ? 'Loading' : isConnected ? 'Connected' : 'Needs attention';
 
         if (state.loading && !state.patrols.length) {
           content.innerHTML = loadingMarkup();
@@ -1855,7 +1780,6 @@
         }
 
         content.innerHTML = renderPatrolTable(visibleRows);
-        observeLoadTrigger(filtered);
         syncTableScrollProxy();
         fetchVisiblePatrolKilometers(visibleRows);
       }
@@ -1968,13 +1892,10 @@
 
       function renderPatrolTable(rows) {
         if (!rows.length) {
-          const filters = getFilters();
-          const filtered = hasRestrictiveFilters(filters);
           return `
             <div class="empty">
-              <strong>No matching patrols in the loaded rows.</strong>
-              <p>Clear filters or keep loading older patrols; matching records may be farther back in the EarthRanger feed.</p>
-              ${state.hasMore ? `<p><button class="load-more" ${filtered ? '' : 'id="loadTrigger"'} type="button" onclick="loadNextPage()">Load more source patrols</button></p>` : ''}
+              <strong>No matching patrols.</strong>
+              <p>Adjust filters or click Refresh Cache to sync the latest data from EarthRanger.</p>
             </div>
           `;
         }
@@ -2000,78 +1921,45 @@
           `;
         }).join('');
 
+        const columns = [
+          { key: 'patrolId', label: 'Patrol ID' },
+          { key: 'patrolType', label: 'Patrol Type' },
+          { key: 'patrolTitle', label: 'Patrol Title / Description' },
+          { key: 'trackedBy', label: 'Tracked By' },
+          { key: 'totalHours', label: 'Total Hours' },
+          { key: 'kilometers', label: 'Kilometers' },
+          { key: 'startDate', label: 'Start Date' },
+          { key: 'endDate', label: 'End Date' },
+          { key: 'startLocation', label: 'Start Location' },
+          { key: 'endLocation', label: 'End Location' }
+        ];
+
+        const headers = columns.map((col) => {
+          const active = state.sortColumn === col.key;
+          const arrow = active ? (state.sortDir === 'asc' ? ' &#9650;' : ' &#9660;') : '';
+          return `<th class="sortable${active ? ' sort-active' : ''}" onclick="sortByColumn('${col.key}')">${col.label}${arrow}</th>`;
+        }).join('');
+
         return `
           <table class="data-table" aria-label="Patrol index">
-            <thead>
-              <tr>
-                <th>Patrol ID</th>
-                <th>Patrol Type</th>
-                <th>Patrol Title / Description</th>
-                <th>Tracked By</th>
-                <th>Total Hours</th>
-                <th>Kilometers</th>
-                <th>Start Date</th>
-                <th>End Date</th>
-                <th>Start Location</th>
-                <th>End Location</th>
+            <thead><tr>${headers}</tr></thead>
+            <tbody>${tableRows}</tbody>
+            <tfoot>
+              <tr class="total-row">
+                <td colspan="10">${rows.length.toLocaleString()} patrols</td>
               </tr>
-            </thead>
-            <tbody>
-              ${tableRows}
-              ${loadRowMarkup()}
-            </tbody>
+            </tfoot>
           </table>
         `;
       }
 
-      function loadRowMarkup() {
-        const filtered = hasRestrictiveFilters(getFilters());
-
-        if (state.loadingMore) {
-          return `
-            <tr class="load-row">
-              <td colspan="10">
-                Loading older patrols...
-                <span class="load-note">${state.patrols.length.toLocaleString()} loaded so far</span>
-              </td>
-            </tr>
-          `;
-        }
-
-        if (!state.hasMore) {
-          return `
-            <tr class="load-row">
-              <td colspan="10">
-                End of loaded patrol feed
-                <span class="load-note">${state.patrols.length.toLocaleString()} patrols loaded</span>
-              </td>
-            </tr>
-          `;
-        }
-
-        return `
-          <tr class="load-row" ${filtered ? '' : 'id="loadTrigger"'}>
-            <td colspan="10">
-              <button class="load-more" type="button" onclick="loadNextPage()">Load more source patrols</button>
-              <span class="load-note">${filtered ? 'Auto-loading is paused while filters are active' : 'Scroll here to continue lazy loading older patrols'}</span>
-            </td>
-          </tr>
-        `;
-      }
-
-      function observeLoadTrigger(filtered) {
-        lazyLoader.disconnect();
-        if (filtered) return;
-        const trigger = document.getElementById('loadTrigger');
-        if (trigger) lazyLoader.observe(trigger);
-      }
 
       function getVisiblePatrols() {
         const filters = getFilters();
 
         return state.patrols
           .filter((item) => patrolMatches(item, filters))
-          .sort((left, right) => comparePatrols(left, right, filters.sort));
+          .sort((left, right) => comparePatrols(left, right, state.sortColumn, state.sortDir));
       }
 
       function getFilters() {
@@ -2080,7 +1968,6 @@
           trackers: [...state.selectedTrackers],
           type: typeFilter.value,
           status: ongoingFilter.checked ? 'ongoing' : statusFilter.value,
-          sort: sortFilter.value,
           from: fromFilter.value,
           to: toFilter.value,
           excludeTest: excludeTestFilter.checked,
@@ -2146,16 +2033,75 @@
         return selectedTrackers.some((name) => itemTrackers.includes(name.toLowerCase()));
       }
 
-      function comparePatrols(left, right, sort) {
-        const leftSerial = Number(left.serial_number || 0);
-        const rightSerial = Number(right.serial_number || 0);
-        const leftStart = getPatrolStartDate(left)?.getTime() || 0;
-        const rightStart = getPatrolStartDate(right)?.getTime() || 0;
+      function comparePatrols(left, right, column, dir) {
+        const leftRow = normalizePatrol(left);
+        const rightRow = normalizePatrol(right);
+        let result = 0;
 
-        if (sort === 'oldest') return leftSerial - rightSerial;
-        if (sort === 'start_desc') return rightStart - leftStart || rightSerial - leftSerial;
-        if (sort === 'start_asc') return leftStart - rightStart || leftSerial - rightSerial;
-        return rightSerial - leftSerial;
+        switch (column) {
+          case 'patrolId':
+            result = Number(left.serial_number || 0) - Number(right.serial_number || 0);
+            break;
+          case 'patrolType':
+            result = (leftRow.patrolType || '').localeCompare(rightRow.patrolType || '');
+            break;
+          case 'patrolTitle':
+            result = (leftRow.patrolTitle || '').localeCompare(rightRow.patrolTitle || '');
+            break;
+          case 'trackedBy':
+            result = (leftRow.trackedBy || '').localeCompare(rightRow.trackedBy || '');
+            break;
+          case 'totalHours':
+            result = getPatrolDurationMilliseconds(left) - getPatrolDurationMilliseconds(right);
+            break;
+          case 'kilometers':
+            result = (getPatrolKilometers(left) || 0) - (getPatrolKilometers(right) || 0);
+            break;
+          case 'startDate':
+            result = (getPatrolStartDate(left)?.getTime() || 0) - (getPatrolStartDate(right)?.getTime() || 0);
+            break;
+          case 'endDate': {
+            const leftEnd = getPatrolEndDate(left)?.getTime() || 0;
+            const rightEnd = getPatrolEndDate(right)?.getTime() || 0;
+            result = leftEnd - rightEnd;
+            break;
+          }
+          case 'startLocation':
+            result = (leftRow.startLocation || '').localeCompare(rightRow.startLocation || '');
+            break;
+          case 'endLocation':
+            result = (leftRow.endLocation || '').localeCompare(rightRow.endLocation || '');
+            break;
+        }
+
+        if (result === 0) {
+          result = Number(left.serial_number || 0) - Number(right.serial_number || 0);
+        }
+
+        return dir === 'desc' ? -result : result;
+      }
+
+      function getPatrolEndDate(item) {
+        const segments = Array.isArray(item.patrol_segments) ? item.patrol_segments : [];
+        const lastSegment = segments[segments.length - 1] || segments[0] || {};
+        const value = firstValue(
+          lastSegment.time_range && lastSegment.time_range.end_time,
+          lastSegment.scheduled_end,
+          item.end_time
+        );
+        if (!value || value === '-') return null;
+        const date = new Date(value);
+        return Number.isNaN(date.getTime()) ? null : date;
+      }
+
+      function sortByColumn(column) {
+        if (state.sortColumn === column) {
+          state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
+        } else {
+          state.sortColumn = column;
+          state.sortDir = 'asc';
+        }
+        render();
       }
 
       function normalizePatrol(item) {
@@ -2280,8 +2226,12 @@
           item.start_time
         );
         if (!value || value === '-') return null;
-        const match = String(value).match(/^(\d{4}-\d{2}-\d{2})/);
-        return match ? match[1] : null;
+        const d = new Date(String(value));
+        if (isNaN(d.getTime())) return null;
+        const y = d.getFullYear();
+        const m = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${y}-${m}-${day}`;
       }
 
       function patrolStartsInSelectedDateRange(item) {

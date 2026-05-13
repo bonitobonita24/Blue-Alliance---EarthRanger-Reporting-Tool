@@ -1,9 +1,9 @@
-import { getPatrolSyncStatus, runPatrolSync } from '../lib/patrol-sync.js';
+import { getPatrolSyncStatus, runDeepSync } from '../lib/patrol-sync.js';
 
 export default async function handler(req, res) {
   try {
     if (req.method === 'POST') {
-      return res.status(200).json(await runPatrolSync());
+      return res.status(200).json(await runDeepSync());
     }
 
     if (req.method === 'GET') {

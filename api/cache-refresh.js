@@ -1,5 +1,4 @@
-import { clearCache } from '../lib/patrol-cache.js';
-import { runPatrolSync } from '../lib/patrol-sync.js';
+import { runDeepSync } from '../lib/patrol-sync.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'POST') {
@@ -7,9 +6,8 @@ export default async function handler(req, res) {
   }
 
   try {
-    const cleared = await clearCache();
-    const sync = await runPatrolSync();
-    return res.status(200).json({ cleared, sync });
+    const status = await runDeepSync();
+    return res.status(200).json({ sync: status?.lastDeepSync || {}, cache: status?.cache || {} });
   } catch (error) {
     return res.status(500).json({ error: error.message });
   }
