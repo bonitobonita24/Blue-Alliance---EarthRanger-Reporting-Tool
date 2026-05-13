@@ -993,6 +993,10 @@
                 <label for="toFilter">To</label>
                 <input id="toFilter" type="date" />
               </div>
+              <label class="checkbox-field" for="excludeTestFilter">
+                <input id="excludeTestFilter" type="checkbox" checked />
+                <span>Exclude test patrols</span>
+              </label>
               <label class="checkbox-field" for="ongoingFilter">
                 <input id="ongoingFilter" type="checkbox" />
                 <span>Show only actively ongoing patrols</span>
@@ -1015,6 +1019,7 @@
               <div class="filter-actions">
                 <button class="load-more" id="generateReportButton" type="button">Generate Report</button>
                 <button class="secondary-button" id="clearFiltersButton" type="button">Clear filters</button>
+                <button class="secondary-button" id="cacheRefreshButton" type="button">Refresh Cache</button>
               </div>
             </div>
           </aside>
@@ -1081,6 +1086,7 @@
       const sortFilter = document.getElementById('sortFilter');
       const fromFilter = document.getElementById('fromFilter');
       const toFilter = document.getElementById('toFilter');
+      const excludeTestFilter = document.getElementById('excludeTestFilter');
       const ongoingFilter = document.getElementById('ongoingFilter');
       const timeWindowEnabled = document.getElementById('timeWindowEnabled');
       const timeFromFilter = document.getElementById('timeFromFilter');
@@ -1115,14 +1121,16 @@
 
       generateReportButton.addEventListener('click', generateReport);
       clearFiltersButton.addEventListener('click', clearFilters);
+      document.getElementById('cacheRefreshButton').addEventListener('click', refreshCache);
       trackedByInput.addEventListener('input', renderTrackerSuggestions);
       trackedByInput.addEventListener('keydown', handleTrackerKeydown);
       trackedByInput.addEventListener('blur', () => {
         setTimeout(() => trackedBySuggestions.classList.remove('is-open'), 140);
       });
       setInterval(autoRefreshPatrols, 60000);
+      setInterval(autoCacheRefresh, 180000);
 
-      [searchInput, typeFilter, statusFilter, sortFilter, ongoingFilter, timeWindowEnabled, timeFromFilter, timeToFilter].forEach((control) => {
+      [searchInput, typeFilter, statusFilter, sortFilter, excludeTestFilter, ongoingFilter, timeWindowEnabled, timeFromFilter, timeToFilter].forEach((control) => {
         control.addEventListener('input', render);
         control.addEventListener('change', render);
       });
@@ -1341,6 +1349,7 @@
         sortFilter.value = 'start_desc';
         fromFilter.value = '';
         toFilter.value = '';
+        excludeTestFilter.checked = true;
         ongoingFilter.checked = false;
         timeWindowEnabled.checked = false;
         timeFromFilter.value = '22:00';
@@ -1348,6 +1357,51 @@
         renderTrackerChips();
         renderTrackerSuggestions();
         refreshPatrolsOnly();
+      }
+
+      async function refreshCache() {
+        const btn = document.getElementById('cacheRefreshButton');
+        btn.disabled = true;
+        btn.textContent = 'Clearing cache…';
+        try {
+          const response = await fetch('/api/cache-refresh', { method: 'POST' });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || 'Refresh failed');
+          state.patrols = [];
+          state.page = 0;
+          state.hasMore = true;
+          trackKmCache.clear();
+          btn.textContent = `Synced ${result.sync?.cache?.totalCached || 0} patrols`;
+          await refreshPatrolsOnly();
+        } catch (error) {
+          btn.textContent = 'Refresh failed';
+          console.warn('Cache refresh error:', error.message);
+        }
+        setTimeout(() => { btn.disabled = false; btn.textContent = 'Refresh Cache'; }, 3000);
+      }
+
+      async function autoCacheRefresh() {
+        if (state.loading || state.loadingMore || state.rangeHarvesting) return;
+        const btn = document.getElementById('cacheRefreshButton');
+        if (btn.disabled) return;
+        try {
+          btn.disabled = true;
+          btn.textContent = 'Auto-syncing…';
+          const response = await fetch('/api/cache-refresh', { method: 'POST' });
+          const result = await response.json();
+          if (!response.ok) throw new Error(result.error || 'Refresh failed');
+          const scrollPosition = getTableScrollPosition();
+          state.patrols = [];
+          state.page = 0;
+          state.hasMore = true;
+          trackKmCache.clear();
+          await refreshPatrolsOnly();
+          restoreTableScrollPosition(scrollPosition);
+          btn.textContent = `Synced ${result.sync?.cache?.totalCached || 0}`;
+        } catch (_) {
+          btn.textContent = 'Refresh Cache';
+        }
+        setTimeout(() => { btn.disabled = false; btn.textContent = 'Refresh Cache'; }, 2000);
       }
 
       async function generateReport() {
@@ -1362,7 +1416,6 @@
         generateReportButton.textContent = 'Generate Report';
         const report = buildReport(rows, filters);
         renderReport(report);
-        reportPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }
 
       async function fetchAndAwaitKilometers(rows) {
@@ -1435,22 +1488,201 @@
       }
 
       function renderReport(report) {
-        reportPanel.hidden = false;
-        reportPanel.innerHTML = [
-          '<div class="report-head">',
-            '<h2>Blue Alliance</h2>',
-            '<p>Patrol Index Report - ', escapeHtml(report.coverage), '</p>',
-            '<p>Date Generated: ', escapeHtml(formatFullDateTime(report.generatedAt)), '</p>',
-          '</div>',
-          '<div class="report-body">',
-            '<div class="report-grid">',
-              '<article class="report-card"><span>Total patrols</span><strong>', report.totalPatrols.toLocaleString(), '</strong></article>',
-              '<article class="report-card"><span>Total hours</span><strong>', escapeHtml(formatReportHours(report.totalMs)), '</strong></article>',
-              '<article class="report-card"><span>Total kilometers</span><strong>', report.totalKm.toFixed(2), ' km</strong></article>',
-            '</div>',
-            renderPatrolDetailTable(report.rows),
-          '</div>'
-        ].join('');
+        const detailRows = report.rows.map((item, index) => {
+          const row = normalizePatrol(item);
+          const durationMs = getPatrolDurationMilliseconds(item);
+          const distanceKm = getPatrolKilometers(item);
+          return [
+            '<tr>',
+              '<td>', String(index + 1), '</td>',
+              '<td>', escapeHtml(String(row.patrolId)), '</td>',
+              '<td>', escapeHtml(row.patrolType), '</td>',
+              '<td>', escapeHtml(row.patrolTitle), '</td>',
+              '<td>', escapeHtml(row.trackedBy), '</td>',
+              '<td>', escapeHtml(row.startDate), '</td>',
+              '<td>', escapeHtml(row.endDate), '</td>',
+              '<td>', escapeHtml(formatHours(durationMs)), '</td>',
+              '<td>', distanceKm !== null ? distanceKm.toFixed(2) + ' km' : '-', '</td>',
+              '<td>', escapeHtml(row.startLocation), '</td>',
+              '<td>', escapeHtml(row.endLocation), '</td>',
+            '</tr>'
+          ].join('');
+        }).join('');
+
+        const blob = new Blob([buildPrintReportHtml(report, detailRows)], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        window.open(url, '_blank');
+      }
+
+      function buildPrintReportHtml(report, detailRows) {
+        return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Blue Alliance - Patrol Index Report</title>
+<style>
+  @page { size: A4 landscape; margin: 0; }
+  *, *::before, *::after { box-sizing: border-box; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-size: 9pt;
+    color: #1a1a1a;
+    margin: 0;
+    padding: 20px;
+    background: #fff;
+  }
+  .toolbar {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    padding: 10px 16px;
+    background: #f0f4f8;
+    border-radius: 6px;
+    margin-bottom: 20px;
+  }
+  .toolbar button {
+    padding: 8px 20px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    background: #fff;
+    cursor: pointer;
+    font-size: 10pt;
+    font-weight: 500;
+  }
+  .toolbar button.primary {
+    background: #2563eb;
+    color: #fff;
+    border-color: #2563eb;
+  }
+  .toolbar button:hover { opacity: 0.85; }
+  .toolbar .separator { flex: 1; }
+  .toolbar label { font-size: 9pt; color: #555; }
+  @media print {
+    .toolbar { display: none !important; }
+    body { padding: 12mm; }
+  }
+  .report-header {
+    text-align: center;
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 2px solid #2563eb;
+  }
+  .report-header h1 {
+    font-size: 16pt;
+    margin: 0 0 4px;
+    color: #1e40af;
+  }
+  .report-header p {
+    margin: 2px 0;
+    color: #555;
+    font-size: 9pt;
+  }
+  .summary-cards {
+    display: flex;
+    gap: 16px;
+    margin-bottom: 16px;
+  }
+  .summary-card {
+    flex: 1;
+    padding: 10px 14px;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    text-align: center;
+    background: #f8fafc;
+  }
+  .summary-card .label { font-size: 8pt; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+  .summary-card .value { font-size: 14pt; font-weight: 700; color: #1e293b; margin-top: 2px; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 8pt;
+    page-break-inside: auto;
+  }
+  thead { display: table-header-group; }
+  tr { page-break-inside: avoid; }
+  th {
+    background: #1e40af;
+    color: #fff;
+    padding: 6px 5px;
+    text-align: left;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  td {
+    padding: 4px 5px;
+    border-bottom: 1px solid #e2e8f0;
+    vertical-align: top;
+  }
+  tbody tr:nth-child(even) { background: #f8fafc; }
+  tbody tr:hover { background: #eef2ff; }
+  .footer {
+    margin-top: 16px;
+    padding-top: 8px;
+    border-top: 1px solid #e2e8f0;
+    font-size: 7pt;
+    color: #94a3b8;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+  <div class="toolbar">
+    <button class="primary" onclick="window.print()">Print</button>
+    <button onclick="setPaperSize('A4')">A4 Landscape</button>
+    <button onclick="setPaperSize('legal')">Legal Landscape</button>
+    <div class="separator"></div>
+    <label id="paperLabel">Paper: A4 Landscape</label>
+  </div>
+
+  <div class="report-header">
+    <h1>Blue Alliance</h1>
+    <p>Patrol Index Report &mdash; ${escapeHtml(report.coverage)}</p>
+    <p>Date Generated: ${escapeHtml(formatFullDateTime(report.generatedAt))}</p>
+  </div>
+
+  <div class="summary-cards">
+    <div class="summary-card"><div class="label">Total Patrols</div><div class="value">${report.totalPatrols.toLocaleString()}</div></div>
+    <div class="summary-card"><div class="label">Total Hours</div><div class="value">${escapeHtml(formatReportHours(report.totalMs))}</div></div>
+    <div class="summary-card"><div class="label">Total Kilometers</div><div class="value">${report.totalKm.toFixed(2)} km</div></div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>ID</th>
+        <th>Type</th>
+        <th>Title</th>
+        <th>Tracked By</th>
+        <th>Start</th>
+        <th>End</th>
+        <th>Hours</th>
+        <th>Distance</th>
+        <th>Start Location</th>
+        <th>End Location</th>
+      </tr>
+    </thead>
+    <tbody>${detailRows}</tbody>
+  </table>
+
+  <div class="footer">
+    Blue Alliance &mdash; EarthRanger Reporting Tool &mdash; Generated ${escapeHtml(formatFullDateTime(report.generatedAt))}
+  </div>
+
+  <script>
+    var styleSheet = document.styleSheets[0];
+    var pageRuleIndex = 0;
+    function setPaperSize(size) {
+      var rule = size === 'legal'
+        ? '@page { size: legal landscape; margin: 0; }'
+        : '@page { size: A4 landscape; margin: 0; }';
+      styleSheet.deleteRule(pageRuleIndex);
+      styleSheet.insertRule(rule, pageRuleIndex);
+      document.getElementById('paperLabel').textContent = size === 'legal' ? 'Paper: Legal Landscape' : 'Paper: A4 Landscape';
+    }
+  <` + `/script>
+</body>
+</html>`;
       }
 
       function renderTypeSubtotalTable(typeTotals) {
@@ -1851,6 +2083,7 @@
           sort: sortFilter.value,
           from: fromFilter.value,
           to: toFilter.value,
+          excludeTest: excludeTestFilter.checked,
           timeWindowEnabled: timeWindowEnabled.checked,
           timeFrom: timeFromFilter.value,
           timeTo: timeToFilter.value
@@ -1869,7 +2102,14 @@
         );
       }
 
+      function isTestPatrol(item) {
+        const title = String(item.title || '').toLowerCase();
+        return /\btest\b/.test(title);
+      }
+
       function patrolMatches(item, filters) {
+        if (filters.excludeTest && isTestPatrol(item)) return false;
+
         const row = normalizePatrol(item);
         const startDate = getPatrolStartDate(item);
         const text = [
@@ -1893,8 +2133,9 @@
         if (filters.timeWindowEnabled) {
           if (!matchesStartWindow(startDate, filters)) return false;
         } else {
-          if (filters.from && (!startDate || startDate < startOfDay(filters.from))) return false;
-          if (filters.to && (!startDate || startDate > endOfDay(filters.to))) return false;
+          const dateStr = getPatrolStartDateString(item);
+          if (filters.from && (!dateStr || dateStr < filters.from)) return false;
+          if (filters.to && (!dateStr || dateStr > filters.to)) return false;
         }
 
         return true;
@@ -2030,11 +2271,24 @@
         return Number.isNaN(date.getTime()) ? null : date;
       }
 
+      function getPatrolStartDateString(item) {
+        const segments = Array.isArray(item.patrol_segments) ? item.patrol_segments : [];
+        const firstSegment = segments[0] || {};
+        const value = firstValue(
+          firstSegment.time_range && firstSegment.time_range.start_time,
+          firstSegment.scheduled_start,
+          item.start_time
+        );
+        if (!value || value === '-') return null;
+        const match = String(value).match(/^(\d{4}-\d{2}-\d{2})/);
+        return match ? match[1] : null;
+      }
+
       function patrolStartsInSelectedDateRange(item) {
-        const startDate = getPatrolStartDate(item);
-        if (!startDate) return false;
-        if (fromFilter.value && startDate < startOfDay(fromFilter.value)) return false;
-        if (toFilter.value && startDate > endOfDay(toFilter.value)) return false;
+        const dateStr = getPatrolStartDateString(item);
+        if (!dateStr) return false;
+        if (fromFilter.value && dateStr < fromFilter.value) return false;
+        if (toFilter.value && dateStr > toFilter.value) return false;
         return true;
       }
 

@@ -4,6 +4,7 @@ import { createServer } from 'node:http';
 import { extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import cacheRefreshHandler from './api/cache-refresh.js';
 import eventsHandler from './api/events.js';
 import healthHandler from './api/health.js';
 import patrolKilometersHandler from './api/patrol-kilometers.js';
@@ -17,6 +18,7 @@ const ROOT = fileURLToPath(new URL('.', import.meta.url));
 const PUBLIC_DIR = join(ROOT, 'public');
 
 const apiRoutes = [
+  { pattern: /^\/api\/cache-refresh\/?$/, handler: cacheRefreshHandler },
   { pattern: /^\/api\/health\/?$/, handler: healthHandler },
   { pattern: /^\/api\/events\/?$/, handler: eventsHandler },
   { pattern: /^\/api\/patrol-kilometers\/?$/, handler: patrolKilometersHandler },
