@@ -8,6 +8,7 @@ import cacheRefreshHandler from './api/cache-refresh.js';
 import eventsHandler from './api/events.js';
 import healthHandler from './api/health.js';
 import patrolKilometersHandler from './api/patrol-kilometers.js';
+import patrolTracksHandler from './api/patrol-tracks.js';
 import patrolsHandler from './api/patrols.js';
 import patrolsUpdateHandler from './api/patrols-update.js';
 import syncStatusHandler from './api/sync-status.js';
@@ -22,6 +23,7 @@ const apiRoutes = [
   { pattern: /^\/api\/health\/?$/, handler: healthHandler },
   { pattern: /^\/api\/events\/?$/, handler: eventsHandler },
   { pattern: /^\/api\/patrol-kilometers\/?$/, handler: patrolKilometersHandler },
+  { pattern: /^\/api\/patrol-tracks\/?$/, handler: patrolTracksHandler },
   { pattern: /^\/api\/patrols\/?$/, handler: patrolsHandler },
   { pattern: /^\/api\/patrols-update\/?$/, handler: patrolsUpdateHandler },
   { pattern: /^\/api\/sync-status\/?$/, handler: syncStatusHandler }
