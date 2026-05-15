@@ -3453,6 +3453,37 @@
 	      <div class="municipality-chart" id="municipality-chart" aria-label="Municipality patrol metric bar chart"></div>
 	    </section>
 	  </main>
+	  <main class="report-page area-covered-page" id="page-area-covered">
+	    <header class="report-head">
+	      <div>
+	        <h1 class="brand-title">EarthRanger Patrol Manager</h1>
+	        <p class="report-subtitle">Area covered within monitored boundaries</p>
+	      </div>
+	      <p class="period">${periodLabel}</p>
+	    </header>
+	    <section class="municipality-main">
+	      <article class="municipality-panel">
+	        <div class="municipality-panel-head">
+	          <span>Area Covered</span>
+	          <p>Patrols, kilometers, and hours intersecting each monitored boundary for this period.</p>
+	        </div>
+	        <table class="municipality-table" id="area-covered-table" aria-label="Area covered per boundary">
+	          <thead>
+	            <tr>
+	              <th>Boundary</th>
+	              <th>Cov. Patrols</th>
+	              <th>KMS</th>
+	              <th>HRS</th>
+	            </tr>
+	          </thead>
+	          <tbody></tbody>
+	        </table>
+	        <p class="report-note" id="area-covered-est-note" hidden>HRS values marked "Est." are distance-weighted estimates because per-point timestamps were not available from EarthRanger for one or more contributing patrols.</p>
+	        <p class="report-note" id="area-covered-missing-note" hidden></p>
+	      </article>
+	      <div class="municipality-chart" id="area-covered-chart" aria-label="Area covered bar chart"></div>
+	    </section>
+	  </main>
 	  <div class="info-dialog-backdrop" id="variance-info-dialog" role="dialog" aria-modal="true" aria-labelledby="variance-info-title">
 	    <article class="info-dialog">
 	      <div class="info-dialog-head">
@@ -3527,6 +3558,7 @@
         if (event.key === 'Escape') closeVarianceInfo();
       });
       renderMunicipalitySummary([]);
+      renderAreaCoveredPage(areaCovered);
       const mapEl = document.getElementById('report-map');
       if (!window.L || !reportTracks.length) {
         mapEl.innerHTML = '<div class="map-empty">No GPS tracks available for this report period.</div>';
@@ -3767,6 +3799,98 @@
 	    function closeVarianceInfo() {
 	      const dialog = document.getElementById('variance-info-dialog');
 	      if (dialog) dialog.classList.remove('open');
+	    }
+
+	    function renderAreaCoveredPage(payload) {
+	      const tbody = document.querySelector('#area-covered-table tbody');
+	      const estNote = document.getElementById('area-covered-est-note');
+	      const missingNote = document.getElementById('area-covered-missing-note');
+	      const chartMount = document.getElementById('area-covered-chart');
+	      if (!tbody) return;
+	      while (tbody.firstChild) tbody.removeChild(tbody.firstChild);
+
+	      const aggregates = payload && payload.aggregates ? payload.aggregates : {};
+	      const rows = Object.entries(aggregates)
+	        .map(([id, v]) => Object.assign({ id }, v))
+	        .filter((r) => Number(r.coverage_patrols) > 0)
+	        .sort((a, b) => Number(b.coverage_km) - Number(a.coverage_km));
+
+	      let anyEstimated = false;
+	      if (rows.length === 0) {
+	        const tr = document.createElement('tr');
+	        const td = document.createElement('td');
+	        td.colSpan = 4;
+	        td.textContent = 'No coverage in monitored boundaries for this period.';
+	        tr.appendChild(td);
+	        tbody.appendChild(tr);
+	      } else {
+	        for (const r of rows) {
+	          const tr = document.createElement('tr');
+
+	          const tdName = document.createElement('td');
+	          tdName.textContent = String(r.boundary_name || r.id || '');
+	          tr.appendChild(tdName);
+
+	          const tdPatrols = document.createElement('td');
+	          tdPatrols.textContent = Number(r.coverage_patrols || 0).toLocaleString();
+	          tr.appendChild(tdPatrols);
+
+	          const tdKm = document.createElement('td');
+	          tdKm.textContent = Number(r.coverage_km || 0).toFixed(1);
+	          tr.appendChild(tdKm);
+
+	          const tdHrs = document.createElement('td');
+	          tdHrs.textContent = Number(r.coverage_hrs || 0).toFixed(1);
+	          if (Number(r.hrs_estimated_count || 0) > 0) {
+	            const badge = document.createElement('span');
+	            badge.className = 'est-badge';
+	            badge.title = 'Distance-weighted estimate';
+	            badge.textContent = ' Est.';
+	            tdHrs.appendChild(badge);
+	            anyEstimated = true;
+	          }
+	          tr.appendChild(tdHrs);
+
+	          tbody.appendChild(tr);
+	        }
+	      }
+
+	      if (estNote) estNote.hidden = !anyEstimated;
+
+	      if (missingNote) {
+	        const missing = payload && Array.isArray(payload.missing_tracks) ? payload.missing_tracks : [];
+	        if (missing.length > 0) {
+	          missingNote.hidden = false;
+	          missingNote.textContent = 'Patrols with missing GPS tracks: ' + missing.length + ' (excluded from totals).';
+	        } else {
+	          missingNote.hidden = true;
+	          missingNote.textContent = '';
+	        }
+	      }
+
+	      if (chartMount) renderAreaCoveredChart(chartMount, rows);
+	    }
+
+	    function renderAreaCoveredChart(mount, rows) {
+	      if (!mount) return;
+	      while (mount.firstChild) mount.removeChild(mount.firstChild);
+	      const chartRows = rows.map((r) => ({
+	        name: String(r.boundary_name || r.id || ''),
+	        count: Number(r.coverage_patrols || 0),
+	        kilometers: Number(r.coverage_km || 0),
+	        hours: Number(r.coverage_hrs || 0)
+	      }));
+	      if (!chartRows.length) return;
+	      const max = chartRows.reduce((highest, row) => Math.max(highest, row.count, row.kilometers, row.hours), 0);
+	      const chartMarkup = buildMunicipalityChart('Area covered (raw metrics)', chartRows, max, (row) => ({
+	        count: row.count,
+	        kilometers: row.kilometers,
+	        hours: row.hours
+	      }), formatReportMetric);
+	      const range = document.createRange();
+	      range.selectNodeContents(mount);
+	      const fragment = range.createContextualFragment(chartMarkup);
+	      mount.appendChild(fragment);
 	    }
 
 	    function nearestStartMunicipality(track, municipalities) {
