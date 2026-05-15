@@ -2251,7 +2251,7 @@
           generateTemplateReportButton.textContent = 'Fetching tracks...';
           const tracks = await fetchReportTracks(rows);
           const report = buildTemplateReport(rows, period, tracks);
-          renderTemplateReport(report);
+          await renderTemplateReport(report);
         } catch (error) {
           console.warn('Template report error:', error.message);
           alert(error.message);
@@ -2614,13 +2614,28 @@
 </html>`;
       }
 
-      function renderTemplateReport(report) {
-        const blob = new Blob([buildTemplateReportHtml(report)], { type: 'text/html' });
+      async function renderTemplateReport(report) {
+        const html = await buildTemplateReportHtml(report);
+        const blob = new Blob([html], { type: 'text/html' });
         const url = URL.createObjectURL(blob);
         window.open(url, '_blank');
       }
 
-      function buildTemplateReportHtml(report) {
+      async function fetchAreaCoveredAggregates({ from, to, patrolIds, boundaries }) {
+        try {
+          const res = await fetch('/api/area-covered', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ from, to, patrolIds, boundaries })
+          });
+          if (!res.ok) return { aggregates: {}, missing_tracks: [], error: 'HTTP ' + res.status };
+          return await res.json();
+        } catch (err) {
+          return { aggregates: {}, missing_tracks: [], error: err.message };
+        }
+      }
+
+      async function buildTemplateReportHtml(report) {
         const reportTracks = report.tracks.map((track) => ({
           patrolId: track.patrolId,
           category: track.category,
@@ -2632,6 +2647,13 @@
         const municipalityReportData = getMunicipalityReportData();
         const customBoundaryJson = escapeScriptJson({ features: municipalityReportData.features });
         const municipalityJson = escapeScriptJson(municipalityReportData.municipalities);
+        const areaCoveredPayload = await fetchAreaCoveredAggregates({
+          from: report.period && report.period.start ? new Date(report.period.start).toISOString() : null,
+          to: report.period && report.period.end ? new Date(report.period.end).toISOString() : null,
+          patrolIds: reportTracks.map((t) => t.patrolId).filter(Boolean),
+          boundaries: municipalityReportData.features
+        });
+        const areaCoveredJson = escapeScriptJson(areaCoveredPayload);
         const periodLabel = escapeHtml(report.period.label.toUpperCase());
         const summaryBlocks = report.summaries.map((item) => {
           return `
@@ -3463,6 +3485,7 @@
 	    const reportTracks = ${trackJson};
 	    const customBoundaries = ${customBoundaryJson};
 	    const reportMunicipalities = mergeReportMunicipalities(${municipalityJson}, customBoundaries.municipalities || []);
+	    const areaCovered = ${areaCoveredJson};
 	    let reportMap = null;
 	    let reportTrackBounds = null;
 	    let reportMapUserAdjusted = false;
