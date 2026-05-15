@@ -91,3 +91,42 @@ test('zero-distance patrol does not divide by zero', async () => {
     assert.ok(Number.isFinite(north.coverage_hrs));
   }
 });
+
+test('missing track is reported in missing_tracks', async () => {
+  const result = await aggregateAreaCovered({
+    patrolIds: ['DOES_NOT_EXIST'],
+    boundaries: [boundaryNorth],
+    patrolHoursById: {}
+  });
+  assert.deepEqual(result.missing_tracks, ['DOES_NOT_EXIST']);
+  assert.equal(Object.keys(result.aggregates).length, 0);
+});
+
+test('multiple patrols accumulate into the same boundary buckets', async () => {
+  const trackOne = {
+    type: 'FeatureCollection',
+    features: [{
+      type: 'Feature',
+      geometry: { type: 'LineString', coordinates: [[121.0, 13.5], [121.1, 13.5]] },
+      properties: { coordinateProperties: { times: ['2026-05-04T10:00:00Z', '2026-05-04T10:10:00Z'] } }
+    }]
+  };
+  const trackTwo = {
+    type: 'FeatureCollection',
+    features: [{
+      type: 'Feature',
+      geometry: { type: 'LineString', coordinates: [[121.2, 13.5], [121.3, 13.5]] },
+      properties: { coordinateProperties: { times: ['2026-05-04T11:00:00Z', '2026-05-04T11:20:00Z'] } }
+    }]
+  };
+  await writeTrack('P1', trackOne);
+  await writeTrack('P2', trackTwo);
+  const result = await aggregateAreaCovered({
+    patrolIds: ['P1', 'P2'],
+    boundaries: [boundaryNorth, boundarySouth],
+    patrolHoursById: {}
+  });
+  const north = result.aggregates.NORTH;
+  assert.equal(north.coverage_patrols, 2);
+  assert.ok(Math.abs(north.coverage_hrs - 30 / 60) < 0.01, `got ${north.coverage_hrs}`);
+});
