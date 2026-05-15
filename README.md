@@ -2,6 +2,10 @@
 
 Docker-ready EarthRanger reporting app for patrol retrieval, filtering, and reporting.
 
+## Agent Handover / Milestone Notes
+
+- [`ACCOMPLISHMENT_REPORT.md`](ACCOMPLISHMENT_REPORT.md) — May 15, 2026 milestone report for future AI agents, Claude Code, and maintainers. Covers the report-template work, municipality patrol analytics, current implementation details, and the proposed next milestone for full track-based area coverage metrics.
+
 ## Endpoints
 - `GET /api/health` — tests connectivity using `/subjects/?page_size=1`
 - `GET /api/events?page_size=10` — fetch recent events

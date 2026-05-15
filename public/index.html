@@ -99,6 +99,12 @@
         margin: 3px 0 0;
       }
 
+      .top-actions {
+        align-items: center;
+        display: flex;
+        gap: 10px;
+      }
+
       main {
         padding: clamp(16px, 4vw, 40px);
       }
@@ -277,6 +283,95 @@
         background: var(--surface-raised);
       }
 
+      .boundary-list {
+        display: grid;
+        gap: 8px;
+      }
+
+      .boundary-list.compact {
+        max-height: 180px;
+        overflow: auto;
+      }
+
+      .boundary-item {
+        align-items: center;
+        background: var(--canvas);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        display: grid;
+        gap: 8px;
+        grid-template-columns: minmax(0, 1fr) auto;
+        padding: 10px;
+      }
+
+      .boundary-item strong {
+        display: block;
+        font-size: 14px;
+        line-height: 1.25;
+      }
+
+      .boundary-item span {
+        color: var(--muted);
+        display: block;
+        font-size: 12px;
+        line-height: 1.3;
+        margin-top: 3px;
+      }
+
+      .boundary-delete {
+        background: var(--soft);
+        border: 1px solid var(--line);
+        border-radius: 999px;
+        color: var(--danger);
+        font-size: 12px;
+        font-weight: 800;
+        min-height: 30px;
+        padding: 0 10px;
+      }
+
+      .boundary-bind-label {
+        color: var(--gold);
+      }
+
+      .municipality-manager-list {
+        display: grid;
+        gap: 8px;
+        max-height: 270px;
+        overflow: auto;
+      }
+
+      .municipality-manager-item {
+        background: var(--canvas);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        display: grid;
+        gap: 4px;
+        padding: 10px;
+        text-align: left;
+      }
+
+      .municipality-manager-item.is-selected {
+        border-color: var(--gold);
+      }
+
+      .municipality-manager-item strong {
+        font-size: 14px;
+        line-height: 1.25;
+      }
+
+      .municipality-manager-item span {
+        color: var(--muted);
+        font-size: 12px;
+        line-height: 1.3;
+      }
+
+      .empty-note {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.4;
+        margin: 0;
+      }
+
       .patrol-panel {
         display: flex;
         flex-direction: column;
@@ -296,7 +391,10 @@
       }
 
       .field[hidden],
-      .period-grid[hidden] {
+      .period-grid[hidden],
+      .time-grid[hidden],
+      .checkbox-field[hidden],
+      .advanced-note[hidden] {
         display: none !important;
       }
 
@@ -1031,6 +1129,79 @@
       .map-modal-status.error {
         color: var(--danger);
       }
+
+      .boundary-modal {
+        background: rgba(0, 0, 0, 0.72);
+        display: none;
+        inset: 0;
+        padding: 24px;
+        position: fixed;
+        z-index: 1000;
+      }
+
+      .boundary-modal.open {
+        display: grid;
+      }
+
+      .boundary-modal-content {
+        background: var(--surface-raised);
+        border: 1px solid var(--line);
+        border-radius: 8px;
+        display: grid;
+        grid-template-rows: auto minmax(0, 1fr) auto;
+        min-height: 0;
+        overflow: hidden;
+      }
+
+      .boundary-modal-header,
+      .boundary-modal-footer {
+        align-items: center;
+        display: flex;
+        gap: 12px;
+        justify-content: space-between;
+        padding: 12px 14px;
+      }
+
+      .boundary-modal-header {
+        border-bottom: 1px solid var(--line);
+      }
+
+      .boundary-modal-footer {
+        border-top: 1px solid var(--line);
+        justify-content: end;
+      }
+
+      .boundary-editor-layout {
+        display: grid;
+        grid-template-columns: 280px minmax(0, 1fr);
+        min-height: 0;
+      }
+
+      .boundary-editor-side {
+        align-content: start;
+        border-right: 1px solid var(--line);
+        display: grid;
+        gap: 12px;
+        padding: 14px;
+      }
+
+      .boundary-editor-actions {
+        display: grid;
+        gap: 8px;
+        grid-template-columns: 1fr 1fr;
+      }
+
+      #boundary-editor-map {
+        background: var(--canvas);
+        min-height: 620px;
+      }
+
+      .boundary-point-count {
+        color: var(--muted);
+        font-size: 13px;
+        line-height: 1.4;
+        margin: 0;
+      }
     </style>
     <link
       rel="stylesheet"
@@ -1054,6 +1225,9 @@
             <h1>EarthRanger Patrol Manager</h1>
             <p>Mindoro operations feed</p>
           </div>
+        </div>
+        <div class="top-actions">
+          <button class="secondary-button" id="openMunicipalityManagerButton" type="button">Boundaries</button>
         </div>
       </header>
 
@@ -1142,7 +1316,7 @@
                   <input id="timeWindowEnabled" type="checkbox" />
                   <span>Advanced start time window</span>
                 </label>
-                <div class="time-grid">
+                <div class="time-grid" id="timeWindowControls" hidden>
                   <div class="field">
                     <label for="timeFromFilter">From time</label>
                     <input id="timeFromFilter" type="time" value="22:00" />
@@ -1152,7 +1326,11 @@
                     <input id="timeToFilter" type="time" value="07:00" />
                   </div>
                 </div>
-                <p class="advanced-note">Date range harvests patrol start dates. Overnight windows match starts from the From time through 11:59 PM on each selected date.</p>
+                <label class="checkbox-field" id="timeFromOnlyField" for="timeFromOnlyFilter" hidden>
+                  <input id="timeFromOnlyFilter" type="checkbox" />
+                  <span>Ignore To time and match any patrol starting from From time</span>
+                </label>
+                <p class="advanced-note" id="timeWindowNote" hidden>Date range harvests patrol start dates. Enable the extra option to match patrols that start at or after From time, regardless of end time.</p>
                 <div class="filter-actions">
                   <button class="load-more" id="generateReportButton" type="button">Generate Report</button>
                   <button class="secondary-button" id="clearFiltersButton" type="button">Clear filters</button>
@@ -1172,8 +1350,8 @@
                 <div class="field">
                   <label for="templateRangeSelect">Group range</label>
                   <select id="templateRangeSelect">
-                    <option value="weekly">Weekly</option>
-                    <option value="monthly" selected>Monthly</option>
+                    <option value="weekly" selected>Weekly</option>
+                    <option value="monthly">Monthly</option>
                     <option value="annual">Annual Report</option>
                   </select>
                 </div>
@@ -1205,6 +1383,7 @@
                 <button class="load-more" id="generateTemplateReportButton" type="button">Generate Template Report</button>
               </div>
             </section>
+
           </aside>
 
           <div class="panel patrol-panel">
@@ -1269,8 +1448,12 @@
       const excludeTestFilter = document.getElementById('excludeTestFilter');
       const ongoingFilter = document.getElementById('ongoingFilter');
       const timeWindowEnabled = document.getElementById('timeWindowEnabled');
+      const timeWindowControls = document.getElementById('timeWindowControls');
+      const timeWindowNote = document.getElementById('timeWindowNote');
       const timeFromFilter = document.getElementById('timeFromFilter');
       const timeToFilter = document.getElementById('timeToFilter');
+      const timeFromOnlyField = document.getElementById('timeFromOnlyField');
+      const timeFromOnlyFilter = document.getElementById('timeFromOnlyFilter');
       const templateRangeSelect = document.getElementById('templateRangeSelect');
       const templateWeekSelect = document.getElementById('templateWeekSelect');
       const templateMonthSelect = document.getElementById('templateMonthSelect');
@@ -1279,9 +1462,33 @@
       const templateMonthField = document.getElementById('templateMonthField');
       const templateYearField = document.getElementById('templateYearField');
       const clearFiltersButton = document.getElementById('clearFiltersButton');
+      const openMunicipalityManagerButton = document.getElementById('openMunicipalityManagerButton');
 
-
+      const MUNICIPALITY_DB_KEY = 'earthRangerReportMunicipalities:v1';
+      const CUSTOM_BOUNDARIES_KEY = 'earthRangerReportCustomBoundaries:v1';
+      const DEFAULT_MUNICIPALITIES = [
+        { id: 'default-calapan', island: 'Mindoro', name: 'Calapan', aliases: ['calapan'], source: 'official', enabled: true },
+        { id: 'default-baco', island: 'Mindoro', name: 'Baco', aliases: ['baco'], source: 'official', enabled: true },
+        { id: 'default-san-teodoro', island: 'Mindoro', name: 'San Teodoro', aliases: ['san teodoro'], source: 'official', enabled: true },
+        { id: 'default-puerto-galera', island: 'Mindoro', name: 'Puerto Galera', aliases: ['puerto galera'], source: 'official', enabled: true },
+        { id: 'default-sablayan', island: 'Mindoro', name: 'Sablayan', aliases: ['sablayan'], source: 'official', enabled: true },
+        { id: 'default-apo-reef-park', island: 'Mindoro', name: 'Apo Reef Park', aliases: ['apo reef', 'apo reef park', 'apo reef natural park'], source: 'official', enabled: true },
+        { id: 'default-roxas', island: 'Palawan', name: 'Roxas', aliases: ['roxas'], source: 'official', enabled: true },
+        { id: 'default-aracelli', island: 'Palawan', name: 'Aracelli', aliases: ['aracelli', 'araceli'], source: 'official', enabled: true },
+        { id: 'default-el-nido', island: 'Palawan', name: 'El Nido', aliases: ['el nido'], source: 'official', enabled: true },
+        { id: 'default-dumaran', island: 'Palawan', name: 'Dumaran', aliases: ['dumaran'], source: 'official', enabled: true },
+        { id: 'default-taytay', island: 'Palawan', name: 'Taytay', aliases: ['taytay'], source: 'official', enabled: true },
+        { id: 'default-aborlan', island: 'Palawan', name: 'Aborlan', aliases: ['aborlan'], source: 'official', enabled: true }
+      ];
       let syncingTableScroll = false;
+      let boundaryEditorMap = null;
+      let boundaryEditorLayer = null;
+      let officialBoundaryEditorLayer = null;
+      let officialBoundaryPreviewFeatures = [];
+      let boundaryEditorPoints = [];
+      let boundaryEditorGeometryType = 'Polygon';
+      let boundaryEditorControlsBound = false;
+      let selectedMunicipalityId = null;
 
       content.addEventListener('scroll', () => {
         if (syncingTableScroll || tableScrollProxy.hidden) return;
@@ -1308,6 +1515,7 @@
       templateYearInput.addEventListener('input', updateTemplateWeekOptions);
       templateYearInput.addEventListener('change', updateTemplateWeekOptions);
       templateMonthSelect.addEventListener('change', updateTemplateWeekOptions);
+      openMunicipalityManagerButton.addEventListener('click', openBoundaryEditor);
       trackedByInput.addEventListener('input', renderTrackerSuggestions);
       trackedByInput.addEventListener('keydown', handleTrackerKeydown);
       trackedByInput.addEventListener('blur', () => {
@@ -1315,7 +1523,7 @@
       });
       setInterval(autoRefreshPatrols, 30000);
 
-      [searchInput, typeFilter, statusFilter, excludeTestFilter, ongoingFilter, timeWindowEnabled, timeFromFilter, timeToFilter].forEach((control) => {
+      [searchInput, typeFilter, statusFilter, excludeTestFilter, ongoingFilter, timeWindowEnabled, timeFromFilter, timeToFilter, timeFromOnlyFilter].forEach((control) => {
         control.addEventListener('input', render);
         control.addEventListener('change', render);
       });
@@ -1327,6 +1535,497 @@
       setDefaultTemplatePeriod();
       updateTemplatePeriodFields();
       refreshAll();
+
+      function loadMunicipalities() {
+        try {
+          const parsed = JSON.parse(localStorage.getItem(MUNICIPALITY_DB_KEY) || 'null');
+          if (Array.isArray(parsed)) return mergeMunicipalityDefaults(parsed);
+        } catch (_) { /* fall through to seed */ }
+        const seeded = mergeLegacyCustomBoundaries(DEFAULT_MUNICIPALITIES.map(cloneMunicipality));
+        saveMunicipalities(seeded);
+        return seeded;
+      }
+
+      function mergeMunicipalityDefaults(records) {
+        const byId = new Map(records.filter(isValidMunicipality).map((record) => [record.id, normalizeMunicipalityRecord(record)]));
+        DEFAULT_MUNICIPALITIES.forEach((item) => {
+          if (!byId.has(item.id)) byId.set(item.id, cloneMunicipality(item));
+        });
+        return [...byId.values()];
+      }
+
+      function mergeLegacyCustomBoundaries(records) {
+        try {
+          const legacy = JSON.parse(localStorage.getItem(CUSTOM_BOUNDARIES_KEY) || '[]');
+          if (!Array.isArray(legacy)) return records;
+          legacy.forEach((boundary) => {
+            if (!boundary || !boundary.name || !Array.isArray(boundary.coordinates)) return;
+            const targetName = boundary.bindTo || boundary.name;
+            const existing = records.find((record) => record.name === targetName);
+            if (existing) {
+              existing.coordinates = boundary.coordinates;
+              return;
+            }
+            records.push({
+              id: boundary.id || ('custom-' + Date.now().toString(36)),
+              island: 'Custom',
+              name: boundary.name,
+              aliases: [boundary.name],
+              source: 'custom',
+              enabled: true,
+              coordinates: boundary.coordinates
+            });
+          });
+        } catch (_) { /* best effort migration */ }
+        return records;
+      }
+
+      function cloneMunicipality(record) {
+        return normalizeMunicipalityRecord(JSON.parse(JSON.stringify(record)));
+      }
+
+      function normalizeMunicipalityRecord(record) {
+        const name = String(record.name || '').trim();
+        const aliases = Array.isArray(record.aliases) ? record.aliases : String(record.aliases || '').split(',');
+        return {
+          id: record.id || ('custom-' + Date.now().toString(36)),
+          island: String(record.island || 'Custom').trim() || 'Custom',
+          name,
+          aliases: [...new Set([name, ...aliases.map((alias) => String(alias).trim()).filter(Boolean)])],
+          source: record.source === 'official' ? 'official' : 'custom',
+          enabled: record.enabled !== false,
+          overrideOfficial: record.overrideOfficial === true || (Array.isArray(record.coordinates) && record.coordinates.length >= 3),
+          geometryType: record.geometryType === 'LineString' ? 'LineString' : 'Polygon',
+          coordinates: Array.isArray(record.coordinates) ? record.coordinates : []
+        };
+      }
+
+      function isValidMunicipality(record) {
+        return Boolean(record && record.id && String(record.name || '').trim());
+      }
+
+      function saveMunicipalities(records) {
+        localStorage.setItem(MUNICIPALITY_DB_KEY, JSON.stringify(records.filter(isValidMunicipality).map(normalizeMunicipalityRecord)));
+      }
+
+      function municipalityToFeature(record) {
+        const ring = (record.coordinates || []).map((point) => [Number(point.lng), Number(point.lat)])
+          .filter(([lng, lat]) => Number.isFinite(lng) && Number.isFinite(lat));
+        if (record.geometryType === 'LineString') {
+          if (ring.length < 2) return null;
+          return {
+            type: 'Feature',
+            properties: {
+              id: record.id,
+              name: record.name,
+              municipality: record.name,
+              source: 'custom',
+              overrideOfficial: record.overrideOfficial === true
+            },
+            geometry: {
+              type: 'LineString',
+              coordinates: ring
+            }
+          };
+        }
+        if (ring.length < 3) return null;
+        const first = ring[0];
+        const last = ring[ring.length - 1];
+        const closedRing = first[0] === last[0] && first[1] === last[1] ? ring : [...ring, first];
+        return {
+          type: 'Feature',
+          properties: {
+            id: record.id,
+            name: record.name,
+            municipality: record.name,
+            source: 'custom',
+            overrideOfficial: record.overrideOfficial === true
+          },
+          geometry: {
+            type: 'Polygon',
+            coordinates: [closedRing]
+          }
+        };
+      }
+
+      function getMunicipalityReportData() {
+        const records = loadMunicipalities().filter((record) => record.enabled !== false);
+        return {
+          municipalities: records.map((record) => ({
+            island: record.island,
+            name: record.name,
+            aliases: record.aliases,
+            overrideOfficial: record.overrideOfficial === true
+          })),
+          features: records.map(municipalityToFeature).filter(Boolean)
+        };
+      }
+
+      function renderMunicipalityManagerList() {
+        const list = document.getElementById('municipalityManagerList');
+        if (!list) return;
+        const records = loadMunicipalities();
+        list.innerHTML = records.map((record) => {
+          const selectedClass = record.id === selectedMunicipalityId ? ' is-selected' : '';
+          const pointLabel = record.coordinates.length >= 3 ? record.coordinates.length.toLocaleString() + ' custom map points' : 'Official boundary lookup';
+          const sourceLabel = record.overrideOfficial ? 'custom override' : record.source;
+          const stateLabel = record.enabled === false ? 'Hidden from reports' : 'Shown in reports';
+          return '<button class="municipality-manager-item' + selectedClass + '" type="button" data-municipality-id="' + escapeHtml(record.id) + '"><strong>' + escapeHtml(record.name) + '</strong><span>' + escapeHtml(record.island) + ' / ' + escapeHtml(sourceLabel) + '</span><span>' + escapeHtml(pointLabel) + ' / ' + escapeHtml(stateLabel) + '</span></button>';
+        }).join('');
+        list.querySelectorAll('[data-municipality-id]').forEach((button) => {
+          button.addEventListener('click', () => selectMunicipality(button.dataset.municipalityId));
+        });
+      }
+
+      function openBoundaryEditor() {
+        if (!window.L) {
+          alert('Map tools are still loading. Try again in a moment.');
+          return;
+        }
+        bindBoundaryEditorControls();
+        const modal = document.getElementById('boundary-modal');
+        if (!modal) return;
+        modal.classList.add('open');
+        setTimeout(() => {
+          ensureBoundaryEditorMap();
+          boundaryEditorMap.invalidateSize();
+          renderMunicipalityManagerList();
+          const records = loadMunicipalities();
+          selectMunicipality(selectedMunicipalityId || (records[0] && records[0].id) || null);
+        }, 0);
+      }
+
+      function bindBoundaryEditorControls() {
+        if (boundaryEditorControlsBound) return;
+        const closeButton = document.getElementById('closeBoundaryEditorButton');
+        const closeMenuButton = document.getElementById('closeBoundaryMenuButton');
+        const cancelButton = document.getElementById('cancelBoundaryEditorButton');
+        const newButton = document.getElementById('newMunicipalityButton');
+        const copyOfficialButton = document.getElementById('copyOfficialBoundaryButton');
+        const undoButton = document.getElementById('undoBoundaryPointButton');
+        const clearButton = document.getElementById('clearBoundaryDraftButton');
+        const deleteButton = document.getElementById('deleteMunicipalityButton');
+        const saveButton = document.getElementById('saveBoundaryButton');
+        if (!closeButton || !closeMenuButton || !cancelButton || !newButton || !copyOfficialButton || !undoButton || !clearButton || !deleteButton || !saveButton) return;
+        closeButton.addEventListener('click', closeBoundaryEditor);
+        closeMenuButton.addEventListener('click', closeBoundaryEditor);
+        cancelButton.addEventListener('click', closeBoundaryEditor);
+        newButton.addEventListener('click', startNewMunicipality);
+        copyOfficialButton.addEventListener('click', copyOfficialBoundaryToDraft);
+        undoButton.addEventListener('click', undoBoundaryPoint);
+        clearButton.addEventListener('click', clearBoundaryDraft);
+        deleteButton.addEventListener('click', deleteSelectedMunicipality);
+        saveButton.addEventListener('click', saveBoundaryDraft);
+        boundaryEditorControlsBound = true;
+      }
+
+      function closeBoundaryEditor() {
+        const modal = document.getElementById('boundary-modal');
+        if (modal) modal.classList.remove('open');
+      }
+
+      function selectMunicipality(id) {
+        selectedMunicipalityId = id;
+        const record = loadMunicipalities().find((item) => item.id === id) || null;
+        const nameInput = document.getElementById('municipalityNameInput');
+        const islandInput = document.getElementById('municipalityIslandInput');
+        const aliasesInput = document.getElementById('municipalityAliasesInput');
+        const enabledInput = document.getElementById('municipalityEnabledInput');
+        if (nameInput) nameInput.value = record ? record.name : '';
+        if (islandInput) islandInput.value = record ? record.island : '';
+        if (aliasesInput) aliasesInput.value = record ? record.aliases.join(', ') : '';
+        if (enabledInput) enabledInput.checked = !record || record.enabled !== false;
+        boundaryEditorPoints = record && Array.isArray(record.coordinates) ? record.coordinates.map((point) => ({ lat: Number(point.lat), lng: Number(point.lng) })).filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng)) : [];
+        boundaryEditorGeometryType = record && record.geometryType === 'LineString' ? 'LineString' : 'Polygon';
+        renderMunicipalityManagerList();
+        drawBoundaryDraft();
+        fitBoundaryEditorToDraft();
+        loadOfficialBoundaryPreview(record);
+      }
+
+      function startNewMunicipality() {
+        selectedMunicipalityId = null;
+        boundaryEditorPoints = [];
+        boundaryEditorGeometryType = 'Polygon';
+        const nameInput = document.getElementById('municipalityNameInput');
+        const islandInput = document.getElementById('municipalityIslandInput');
+        const aliasesInput = document.getElementById('municipalityAliasesInput');
+        const enabledInput = document.getElementById('municipalityEnabledInput');
+        if (nameInput) nameInput.value = '';
+        if (islandInput) islandInput.value = 'Custom';
+        if (aliasesInput) aliasesInput.value = '';
+        if (enabledInput) enabledInput.checked = true;
+        renderMunicipalityManagerList();
+        clearOfficialBoundaryPreview();
+        drawBoundaryDraft();
+      }
+
+      function ensureBoundaryEditorMap() {
+        if (boundaryEditorMap) return;
+        boundaryEditorMap = L.map('boundary-editor-map').setView(getBoundaryEditorStartCenter(), 8);
+        L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png', {
+          attribution: '&copy; OpenStreetMap contributors &copy; CARTO',
+          maxZoom: 19,
+          subdomains: 'abcd'
+        }).addTo(boundaryEditorMap);
+        boundaryEditorMap.on('click', (event) => {
+          boundaryEditorPoints.push({ lat: event.latlng.lat, lng: event.latlng.lng });
+          drawBoundaryDraft();
+        });
+      }
+
+      async function loadOfficialBoundaryPreview(record) {
+        clearOfficialBoundaryPreview();
+        if (!boundaryEditorMap || !record || record.source !== 'official' || record.overrideOfficial) return;
+        try {
+          officialBoundaryPreviewFeatures = [];
+          const pointCount = document.getElementById('boundaryPointCount');
+          if (pointCount) pointCount.textContent = 'Loading official boundary preview...';
+          const where = officialBoundaryWhereForRecord(record);
+          if (!where) return;
+          const params = new URLSearchParams({
+            f: 'geojson',
+            where,
+            outFields: 'municipali,province',
+            returnGeometry: 'true',
+            outSR: '4326',
+            resultRecordCount: '50'
+          });
+          const response = await fetch('https://services1.arcgis.com/RTK5Unh1Z71JKIiR/arcgis/rest/services/Municipal_Waters/FeatureServer/0/query?' + params);
+          const geojson = await response.json();
+          const features = response.ok && Array.isArray(geojson.features)
+            ? geojson.features.filter((feature) => officialFeatureMatchesRecord(feature, record))
+            : [];
+          if (!features.length) {
+            if (pointCount) pointCount.textContent = 'No official boundary line found for this row.';
+            return;
+          }
+          officialBoundaryPreviewFeatures = features;
+          officialBoundaryEditorLayer = L.geoJSON({ type: 'FeatureCollection', features }, {
+            style: {
+              color: '#20c7ff',
+              dashArray: '8 5',
+              fillColor: '#20c7ff',
+              fillOpacity: 0.12,
+              opacity: 1,
+              weight: 5
+            }
+          }).addTo(boundaryEditorMap);
+          officialBoundaryEditorLayer.bringToFront();
+          const bounds = officialBoundaryEditorLayer.getBounds();
+          if (bounds.isValid() && boundaryEditorPoints.length < 2) {
+            boundaryEditorMap.fitBounds(bounds.pad(0.25));
+            setTimeout(() => {
+              boundaryEditorMap.invalidateSize();
+              boundaryEditorMap.fitBounds(bounds.pad(0.25), { animate: false });
+            }, 80);
+          }
+          if (pointCount) pointCount.textContent = 'Official boundary preview loaded. Draw and save your own boundary to override it.';
+        } catch (error) {
+          console.warn('Official boundary preview failed:', error.message);
+          const pointCount = document.getElementById('boundaryPointCount');
+          if (pointCount) pointCount.textContent = 'Official boundary preview failed to load.';
+        }
+      }
+
+      function clearOfficialBoundaryPreview() {
+        officialBoundaryPreviewFeatures = [];
+        if (officialBoundaryEditorLayer) {
+          officialBoundaryEditorLayer.remove();
+          officialBoundaryEditorLayer = null;
+        }
+      }
+
+      function copyOfficialBoundaryToDraft() {
+        if (!officialBoundaryPreviewFeatures.length) {
+          alert('No official boundary preview is loaded for the selected row.');
+          return;
+        }
+        const points = extractBoundaryPointsFromFeatures(officialBoundaryPreviewFeatures);
+        if (points.length < 2) {
+          alert('The loaded official boundary could not be copied.');
+          return;
+        }
+        boundaryEditorPoints = points;
+        boundaryEditorGeometryType = 'LineString';
+        drawBoundaryDraft();
+        fitBoundaryEditorToDraft();
+        const pointCount = document.getElementById('boundaryPointCount');
+        if (pointCount) pointCount.textContent = points.length.toLocaleString() + ' official boundary points copied. Save Boundary to use this copy in reports.';
+      }
+
+      function extractBoundaryPointsFromFeatures(features) {
+        const candidateLines = [];
+        features.forEach((feature) => {
+          const geometry = feature && feature.geometry;
+          if (!geometry) return;
+          if (geometry.type === 'LineString') candidateLines.push(geometry.coordinates);
+          if (geometry.type === 'MultiLineString') candidateLines.push(...geometry.coordinates);
+          if (geometry.type === 'Polygon') candidateLines.push(...geometry.coordinates);
+          if (geometry.type === 'MultiPolygon') {
+            geometry.coordinates.forEach((polygon) => candidateLines.push(...polygon));
+          }
+        });
+        const bestLine = candidateLines
+          .filter((line) => Array.isArray(line) && line.length >= 2)
+          .sort((left, right) => right.length - left.length)[0] || [];
+        return bestLine.map(([lng, lat]) => ({ lat: Number(lat), lng: Number(lng) }))
+          .filter((point) => Number.isFinite(point.lat) && Number.isFinite(point.lng));
+      }
+
+      function officialBoundaryWhereForRecord(record) {
+        const names = [record.name, ...(Array.isArray(record.aliases) ? record.aliases : [])]
+          .map((value) => normalizeBoundaryName(value))
+          .filter(Boolean);
+        const uniqueNames = [...new Set(names)];
+        if (!uniqueNames.length) return '';
+        const nameWhere = uniqueNames.map((name) => {
+          const escaped = name.replace(/'/g, "''");
+          return "LOWER(municipali) LIKE '" + escaped + "%'";
+        }).join(' OR ');
+        const group = normalizeBoundaryName(record.island);
+        const provinceWhere = group ? " AND LOWER(province) LIKE '%" + group.replace(/'/g, "''") + "%'" : '';
+        return '(' + nameWhere + ')' + provinceWhere;
+      }
+
+      function officialFeatureMatchesRecord(feature, record) {
+        const properties = feature && feature.properties ? feature.properties : {};
+        const label = normalizeBoundaryName(properties.municipali || properties.municipality || properties.name || '');
+        const province = normalizeBoundaryName(properties.province || '');
+        const names = [record.name, ...(Array.isArray(record.aliases) ? record.aliases : [])].map(normalizeBoundaryName).filter(Boolean);
+        const nameMatches = names.some((name) => label === name || label.startsWith(name + ' '));
+        const group = normalizeBoundaryName(record.island);
+        const provinceMatches = !group || province.includes(group);
+        return nameMatches && provinceMatches;
+      }
+
+      function getBoundaryEditorStartCenter() {
+        const patrolWithLocation = state.patrols.find((item) => {
+          const normalized = normalizePatrol(item);
+          return parseLocationPair(normalized.startLocation);
+        });
+        if (patrolWithLocation) {
+          const coords = parseLocationPair(normalizePatrol(patrolWithLocation).startLocation);
+          if (coords) return [coords.lat, coords.lng];
+        }
+        return [12.35, 121.05];
+      }
+
+      function drawBoundaryDraft() {
+        if (!boundaryEditorMap) return;
+        if (boundaryEditorLayer) {
+          boundaryEditorLayer.remove();
+          boundaryEditorLayer = null;
+        }
+        const latLngs = boundaryEditorPoints.map((point) => [point.lat, point.lng]);
+        const layers = [];
+        if (latLngs.length) {
+          layers.push(L.polyline(latLngs, { color: '#f2d78f', weight: 3 }));
+          layers.push(...latLngs.map((latLng) => L.circleMarker(latLng, {
+            radius: 5,
+            color: '#101113',
+            fillColor: '#f2d78f',
+            fillOpacity: 1,
+            weight: 1
+          })));
+        }
+        if (latLngs.length >= 3 && boundaryEditorGeometryType !== 'LineString') {
+          layers.push(L.polygon(latLngs, {
+            color: '#38d677',
+            fillColor: '#38d677',
+            fillOpacity: 0.18,
+            weight: 2
+          }));
+        }
+        boundaryEditorLayer = L.layerGroup(layers).addTo(boundaryEditorMap);
+        const pointCount = document.getElementById('boundaryPointCount');
+        if (pointCount) pointCount.textContent = boundaryEditorPoints.length.toLocaleString() + ' point' + (boundaryEditorPoints.length === 1 ? '' : 's') + ' selected.';
+      }
+
+      function fitBoundaryEditorToDraft() {
+        if (!boundaryEditorMap || boundaryEditorPoints.length < 2) return;
+        const bounds = L.latLngBounds(boundaryEditorPoints.map((point) => [point.lat, point.lng]));
+        if (bounds.isValid()) boundaryEditorMap.fitBounds(bounds.pad(0.2));
+      }
+
+      function undoBoundaryPoint() {
+        boundaryEditorPoints.pop();
+        drawBoundaryDraft();
+      }
+
+      function clearBoundaryDraft() {
+        boundaryEditorPoints = [];
+        drawBoundaryDraft();
+      }
+
+      function saveBoundaryDraft() {
+        const nameInput = document.getElementById('municipalityNameInput');
+        const islandInput = document.getElementById('municipalityIslandInput');
+        const aliasesInput = document.getElementById('municipalityAliasesInput');
+        const enabledInput = document.getElementById('municipalityEnabledInput');
+        const name = nameInput ? nameInput.value.trim() : '';
+        if (!name) {
+          alert('Enter a boundary or monitoring area name first.');
+          return;
+        }
+        const records = loadMunicipalities();
+        const existingIndex = records.findIndex((record) => record.id === selectedMunicipalityId);
+        const source = existingIndex >= 0 ? records[existingIndex].source : 'custom';
+        const minimumPoints = boundaryEditorGeometryType === 'LineString' ? 2 : 3;
+        if (boundaryEditorPoints.length && boundaryEditorPoints.length < minimumPoints) {
+          alert(boundaryEditorGeometryType === 'LineString' ? 'A copied boundary line needs at least 2 points.' : 'A custom boundary polygon needs at least 3 map points.');
+          return;
+        }
+        if (source === 'custom' && boundaryEditorPoints.length < minimumPoints) {
+          alert('Click at least 3 map points for a new custom monitoring boundary.');
+          return;
+        }
+        const aliases = String(aliasesInput ? aliasesInput.value : '').split(',').map((alias) => alias.trim()).filter(Boolean);
+        const nextRecord = normalizeMunicipalityRecord({
+          id: existingIndex >= 0 ? records[existingIndex].id : 'custom-' + Date.now().toString(36),
+          source,
+          name,
+          island: islandInput && islandInput.value.trim() ? islandInput.value.trim() : 'Custom',
+          aliases,
+          enabled: enabledInput ? enabledInput.checked : true,
+          overrideOfficial: source === 'official' && boundaryEditorPoints.length >= minimumPoints,
+          geometryType: boundaryEditorGeometryType,
+          coordinates: boundaryEditorPoints.map((point) => ({
+            lat: Number(point.lat.toFixed(7)),
+            lng: Number(point.lng.toFixed(7))
+          }))
+        });
+        if (existingIndex >= 0) records[existingIndex] = nextRecord;
+        else records.push(nextRecord);
+        saveMunicipalities(records);
+        selectedMunicipalityId = nextRecord.id;
+        renderMunicipalityManagerList();
+        selectMunicipality(nextRecord.id);
+      }
+
+      function deleteSelectedMunicipality() {
+        if (!selectedMunicipalityId) return;
+        const records = loadMunicipalities();
+        const selected = records.find((record) => record.id === selectedMunicipalityId);
+        if (!selected) return;
+        let nextRecords;
+        if (selected.source === 'official') {
+          nextRecords = records.map((record) => record.id === selected.id ? { ...record, enabled: false } : record);
+        } else {
+          nextRecords = records.filter((record) => record.id !== selected.id);
+        }
+        saveMunicipalities(nextRecords);
+        const next = nextRecords.find((record) => record.enabled !== false) || nextRecords[0] || null;
+        selectMunicipality(next && next.id);
+      }
+
+      function parseLocationPair(value) {
+        const match = String(value || '').match(/(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)/);
+        if (!match) return null;
+        const lat = Number(match[1]);
+        const lng = Number(match[2]);
+        return Number.isFinite(lat) && Number.isFinite(lng) ? { lat, lng } : null;
+      }
 
       async function refreshAll() {
         state.error = null;
@@ -1484,6 +2183,7 @@
         excludeTestFilter.checked = true;
         ongoingFilter.checked = false;
         timeWindowEnabled.checked = false;
+        timeFromOnlyFilter.checked = false;
         timeFromFilter.value = '22:00';
         timeToFilter.value = '07:00';
         state.sortColumn = 'startDate';
@@ -1491,6 +2191,13 @@
         renderTrackerChips();
         renderTrackerSuggestions();
         render();
+      }
+
+      function updateTimeWindowVisibility(filters = getFilters()) {
+        const enabled = filters.timeWindowEnabled;
+        timeWindowControls.hidden = !enabled;
+        timeFromOnlyField.hidden = !enabled;
+        timeWindowNote.hidden = !enabled;
       }
 
       async function refreshCache() {
@@ -1665,14 +2372,14 @@
               '<td>', String(index + 1), '</td>',
               '<td>', escapeHtml(String(row.patrolId)), '</td>',
               '<td>', escapeHtml(row.patrolType), '</td>',
-              '<td>', escapeHtml(row.patrolTitle), '</td>',
+              '<td class="title-cell">', escapeHtml(row.patrolTitle), '</td>',
               '<td>', escapeHtml(row.trackedBy), '</td>',
-              '<td>', escapeHtml(row.startDate), '</td>',
-              '<td>', escapeHtml(row.endDate), '</td>',
-              '<td>', escapeHtml(formatHours(durationMs)), '</td>',
-              '<td>', distanceKm !== null ? distanceKm.toFixed(2) + ' km' : '-', '</td>',
-              '<td>', escapeHtml(row.startLocation), '</td>',
-              '<td>', escapeHtml(row.endLocation), '</td>',
+              '<td class="date-cell">', escapeHtml(row.startDate), '</td>',
+              '<td class="date-cell">', escapeHtml(row.endDate), '</td>',
+              '<td class="hours-cell">', escapeHtml(formatHours(durationMs)), '</td>',
+              '<td class="distance-cell">', distanceKm !== null ? distanceKm.toFixed(2) + ' km' : '-', '</td>',
+              '<td class="location-cell">', escapeHtml(row.startLocation), '</td>',
+              '<td class="location-cell">', escapeHtml(row.endLocation), '</td>',
             '</tr>'
           ].join('');
         }).join('');
@@ -1765,21 +2472,62 @@
     border-collapse: collapse;
     font-size: 8pt;
     page-break-inside: auto;
+    table-layout: fixed;
   }
+  col.row-number { width: 3%; }
+  col.patrol-id { width: 5%; }
+  col.patrol-type { width: 7%; }
+  col.patrol-title { width: 20%; }
+  col.tracked-by { width: 8%; }
+  col.start-date { width: 7%; }
+  col.end-date { width: 7%; }
+  col.hours { width: 5%; }
+  col.distance { width: 6%; }
+  col.start-location { width: 16%; }
+  col.end-location { width: 16%; }
   thead { display: table-header-group; }
   tr { page-break-inside: avoid; }
   th {
     background: #1e40af;
     color: #fff;
     padding: 6px 5px;
-    text-align: left;
+    text-align: center;
     font-weight: 600;
-    white-space: nowrap;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.2;
   }
   td {
     padding: 4px 5px;
     border-bottom: 1px solid #e2e8f0;
+    text-align: center;
     vertical-align: top;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.25;
+  }
+  .title-cell {
+    max-width: 200px;
+    word-break: normal;
+    text-align: center;
+    width: 20%;
+    line-height: 1.35;
+  }
+  .date-cell,
+  .hours-cell,
+  .distance-cell,
+  .location-cell {
+    font-size: 7.5pt;
+  }
+  .date-cell {
+    line-height: 1.25;
+  }
+  .hours-cell,
+  .distance-cell {
+    text-align: center;
+  }
+  .location-cell {
+    line-height: 1.25;
   }
   tbody tr:nth-child(even) { background: #f8fafc; }
   tbody tr:hover { background: #eef2ff; }
@@ -1815,12 +2563,25 @@
   </div>
 
   <table>
+    <colgroup>
+      <col class="row-number">
+      <col class="patrol-id">
+      <col class="patrol-type">
+      <col class="patrol-title">
+      <col class="tracked-by">
+      <col class="start-date">
+      <col class="end-date">
+      <col class="hours">
+      <col class="distance">
+      <col class="start-location">
+      <col class="end-location">
+    </colgroup>
     <thead>
       <tr>
         <th>#</th>
         <th>ID</th>
         <th>Type</th>
-        <th>Title</th>
+        <th class="title-cell">Title</th>
         <th>Tracked By</th>
         <th>Start</th>
         <th>End</th>
@@ -1863,9 +2624,14 @@
         const reportTracks = report.tracks.map((track) => ({
           patrolId: track.patrolId,
           category: track.category,
+          kilometers: track.kilometers,
+          hours: track.hours,
           coords: track.coords
         }));
         const trackJson = escapeScriptJson(reportTracks);
+        const municipalityReportData = getMunicipalityReportData();
+        const customBoundaryJson = escapeScriptJson({ features: municipalityReportData.features });
+        const municipalityJson = escapeScriptJson(municipalityReportData.municipalities);
         const periodLabel = escapeHtml(report.period.label.toUpperCase());
         const summaryBlocks = report.summaries.map((item) => {
           return `
@@ -1891,6 +2657,30 @@
             </article>
           `;
         }).join('');
+        const combinedSummary = report.summaries.reduce((total, item) => {
+          total.count += item.count;
+          total.kilometers += item.kilometers;
+          total.milliseconds += item.milliseconds;
+          return total;
+        }, { count: 0, kilometers: 0, milliseconds: 0 });
+        const combinedSummaryBlock = `
+          <article class="type-card total-card">
+            <div class="type-card-head">
+              <span>Total Patrols</span>
+              <strong>${combinedSummary.count.toLocaleString()}</strong>
+            </div>
+            <div class="metric-grid">
+              <div class="metric">
+                <span>Total kms</span>
+                <strong>${combinedSummary.kilometers.toFixed(2)}</strong>
+              </div>
+              <div class="metric">
+                <span>Total hrs</span>
+                <strong>${formatDecimalHours(combinedSummary.milliseconds)}</strong>
+              </div>
+            </div>
+          </article>
+        `;
 
         return `<!DOCTYPE html>
 <html lang="en">
@@ -1982,7 +2772,7 @@
 	  .report-main {
 	    display: grid;
 	    gap: 18px;
-	    grid-template-columns: minmax(280px, 360px) minmax(0, 1fr);
+	    grid-template-columns: minmax(220px, 280px) minmax(0, 1fr);
 	    min-height: 0;
 	  }
 	  .type-card,
@@ -2021,6 +2811,9 @@
 	    grid-template-columns: 1fr;
 	    padding: 14px;
 	  }
+	  .total-card {
+	    border-color: #f2d78f;
+	  }
 	  .metric {
 	    background: #1a1c20;
 	    border: 1px solid #30343a;
@@ -2054,7 +2847,7 @@
 	  }
 	  .map-frame {
 	    background: #1a1c20;
-	    height: 620px;
+	    height: 800px;
 	    position: relative;
 	    width: 100%;
 	  }
@@ -2077,14 +2870,305 @@
 	    font-size: 12px;
 	    margin: 0;
 	  }
+	  .municipality-main {
+	    display: grid;
+	    gap: 18px;
+	    grid-template-columns: minmax(420px, 1fr) minmax(360px, 0.9fr);
+	    min-height: 0;
+	  }
+	  .municipality-panel {
+	    background: #15171a;
+	    border: 1px solid #30343a;
+	    border-radius: 8px;
+	    overflow: hidden;
+	  }
+	  .municipality-panel-head {
+	    border-bottom: 1px solid #30343a;
+	    padding: 14px;
+	  }
+	  .municipality-panel-head span {
+	    color: #ddd6ca;
+	    display: block;
+	    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	    font-size: 11px;
+	    font-weight: 800;
+	    letter-spacing: 0;
+	    text-transform: uppercase;
+	  }
+	  .municipality-panel-head p {
+	    color: #b8b2a6;
+	    font-size: 13px;
+	    line-height: 1.35;
+	    margin: 4px 0 0;
+	  }
+	  .municipality-table {
+	    border-collapse: collapse;
+	    color: #f5f1e8;
+	    font-size: 13px;
+	    width: 100%;
+	  }
+	  .municipality-table th,
+	  .municipality-table td {
+	    border-bottom: 1px solid #30343a;
+	    padding: 10px 12px;
+	    text-align: center;
+	  }
+	  .municipality-table th {
+	    background: #1a1c20;
+	    color: #ddd6ca;
+	    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	    font-size: 11px;
+	    font-weight: 800;
+	    text-transform: uppercase;
+	  }
+	  .municipality-table td:first-child {
+	    font-weight: 800;
+	    text-align: left;
+	  }
+	  .municipality-total-row td {
+	    color: #f2d78f;
+	    font-weight: 800;
+	  }
+	  .municipality-chart {
+	    display: grid;
+	    gap: 12px;
+	    grid-template-rows: repeat(2, minmax(0, 1fr));
+	    padding: 14px;
+	  }
+	  .chart-panel {
+	    display: grid;
+	    gap: 6px;
+	    grid-template-columns: 44px minmax(0, 1fr);
+	    grid-template-rows: auto minmax(120px, 1fr) auto auto;
+	    min-height: 0;
+	  }
+	  .chart-title {
+	    align-items: center;
+	    color: #ddd6ca;
+	    display: flex;
+	    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+	    font-size: 11px;
+	    font-weight: 800;
+	    gap: 6px;
+	    grid-column: 1 / -1;
+	    justify-content: space-between;
+	    letter-spacing: 0;
+	    text-transform: uppercase;
+	  }
+	  .chart-title-text {
+	    min-width: 0;
+	  }
+	  .chart-info-button {
+	    align-items: center;
+	    background: #1a1c20;
+	    border: 1px solid #30343a;
+	    border-radius: 999px;
+	    color: #f2d78f;
+	    cursor: pointer;
+	    display: inline-flex;
+	    flex: 0 0 auto;
+	    font: inherit;
+	    height: 22px;
+	    justify-content: center;
+	    line-height: 1;
+	    padding: 0;
+	    width: 22px;
+	  }
+	  .chart-info-button:hover {
+	    border-color: #f2d78f;
+	  }
+	  .chart-y-axis {
+	    color: #f5f1e8;
+	    display: grid;
+	    font-size: 13px;
+	    font-weight: 900;
+	    grid-template-rows: repeat(5, 1fr);
+	    line-height: 1;
+	    text-align: right;
+	  }
+	  .chart-bars {
+	    align-items: end;
+	    background: repeating-linear-gradient(to top, transparent 0, transparent 23px, #374151 24px);
+	    border-bottom: 1px solid #374151;
+	    display: grid;
+	    gap: 8px;
+	    grid-template-columns: repeat(12, minmax(0, 1fr));
+	    min-height: 120px;
+	  }
+	  .bar-group {
+	    align-items: end;
+	    display: flex;
+	    gap: 3px;
+	    height: 100%;
+	    justify-content: center;
+	  }
+	  .bar-fill {
+	    align-self: end;
+	    min-height: 1px;
+	    width: 14px;
+	  }
+	  .bar-fill.count-bar {
+	    background: #ff8a3d;
+	  }
+	  .bar-fill.km-bar {
+	    background: #19c37d;
+	  }
+	  .bar-fill.hour-bar {
+	    background: #4dabf7;
+	  }
+	  .bar-axis {
+	    align-items: start;
+	    display: grid;
+	    gap: 8px;
+	    grid-column: 2;
+	    grid-template-columns: repeat(12, minmax(0, 1fr));
+	    margin-top: 4px;
+	  }
+	  .bar-axis span {
+	    color: #f5f1e8;
+	    font-size: 13px;
+	    font-weight: 800;
+	    text-align: center;
+	  }
+	  .bar-legend {
+	    align-items: center;
+	    color: #d1d5db;
+	    display: flex;
+	    flex-wrap: wrap;
+	    font-size: 11px;
+	    gap: 8px;
+	    grid-column: 2;
+	    line-height: 1.35;
+	  }
+	  .legend-item {
+	    align-items: center;
+	    display: inline-flex;
+	    gap: 4px;
+	  }
+	  .legend-swatch {
+	    border-radius: 2px;
+	    display: inline-block;
+	    height: 9px;
+	    width: 9px;
+	  }
+	  .legend-swatch.count-bar {
+	    background: #ff8a3d;
+	  }
+	  .legend-swatch.km-bar {
+	    background: #19c37d;
+	  }
+	  .legend-swatch.hour-bar {
+	    background: #4dabf7;
+	  }
+	  .municipality-status {
+	    color: #b8b2a6;
+	    font-size: 12px;
+	    line-height: 1.35;
+	    margin: 10px 14px 14px;
+	  }
+	  .info-dialog-backdrop {
+	    align-items: center;
+	    background: rgba(0, 0, 0, 0.68);
+	    display: none;
+	    inset: 0;
+	    justify-content: center;
+	    padding: 24px;
+	    position: fixed;
+	    z-index: 2000;
+	  }
+	  .info-dialog-backdrop.open {
+	    display: flex;
+	  }
+	  .info-dialog {
+	    background: #15171a;
+	    border: 1px solid #30343a;
+	    border-radius: 8px;
+	    color: #f5f1e8;
+	    max-width: 560px;
+	    padding: 18px;
+	    width: min(560px, 100%);
+	  }
+	  .info-dialog-head {
+	    align-items: center;
+	    display: flex;
+	    gap: 12px;
+	    justify-content: space-between;
+	    margin-bottom: 12px;
+	  }
+	  .info-dialog h2 {
+	    color: #f2d78f;
+	    font-size: 17px;
+	    margin: 0;
+	  }
+	  .info-dialog p {
+	    color: #ddd6ca;
+	    font-size: 13px;
+	    line-height: 1.5;
+	    margin: 0 0 10px;
+	  }
+	  .info-dialog ul {
+	    color: #ddd6ca;
+	    font-size: 13px;
+	    line-height: 1.5;
+	    margin: 0 0 12px;
+	    padding-left: 18px;
+	  }
+	  .info-dialog-close {
+	    background: #1a1c20;
+	    border: 1px solid #30343a;
+	    border-radius: 6px;
+	    color: #f5f1e8;
+	    cursor: pointer;
+	    font-weight: 800;
+	    min-height: 32px;
+	    padding: 6px 10px;
+	  }
+	  .variance-example {
+	    background: #1a1c20;
+	    border: 1px solid #30343a;
+	    border-radius: 8px;
+	    display: grid;
+	    gap: 8px;
+	    margin-top: 12px;
+	    padding: 12px;
+	  }
+	  .variance-example-row {
+	    align-items: center;
+	    display: grid;
+	    gap: 8px;
+	    grid-template-columns: 96px minmax(0, 1fr) 46px;
+	  }
+	  .variance-example-label {
+	    color: #f5f1e8;
+	    font-size: 12px;
+	    font-weight: 800;
+	  }
+	  .variance-example-track {
+	    background: #101113;
+	    border-radius: 999px;
+	    height: 10px;
+	    overflow: hidden;
+	  }
+	  .variance-example-fill {
+	    background: #19c37d;
+	    height: 100%;
+	  }
+	  .variance-example-value {
+	    color: #f2d78f;
+	    font-size: 12px;
+	    font-weight: 800;
+	    text-align: right;
+	  }
 	  @media print {
-	    .toolbar { display: none !important; }
+	    .toolbar,
+	    .chart-info-button,
+	    .info-dialog-backdrop { display: none !important; }
 	    html,
 	    body {
 	      background: #ffffff !important;
 	      color: #111827 !important;
-	      height: 100%;
-	      overflow: hidden;
+	      height: auto;
+	      overflow: visible;
 	    }
 	    .report-page {
 	      background: #ffffff !important;
@@ -2095,6 +3179,9 @@
 	      padding: 8mm;
 	      page-break-after: always;
 	      width: 297mm;
+	    }
+	    .report-page:last-of-type {
+	      page-break-after: auto;
 	    }
 	    .report-head {
 	      background: #ffffff !important;
@@ -2118,7 +3205,7 @@
 	      border-color: #d1d5db !important;
 	    }
 	    .report-main {
-	      grid-template-columns: 68mm minmax(0, 1fr);
+	      grid-template-columns: 50mm minmax(0, 1fr);
 	      gap: 5mm;
 	      height: 162mm;
 	      min-height: 0;
@@ -2128,21 +3215,26 @@
 	    }
 	    .type-card,
 	    .map-panel,
-	    .metric {
+	    .metric,
+	    .municipality-panel {
 	      background: #ffffff !important;
 	      border-color: #d1d5db !important;
 	    }
 	    .type-card-head,
-	    .map-title {
+	    .map-title,
+	    .municipality-panel-head {
 	      border-color: #d1d5db !important;
 	    }
 	    .type-card-head span,
 	    .metric span,
-	    .map-title span {
+	    .map-title span,
+	    .municipality-panel-head span,
+	    .municipality-table th {
 	      color: #374151 !important;
 	    }
 	    .type-card-head strong,
-	    .metric strong {
+	    .metric strong,
+	    .municipality-total-row td {
 	      color: #111827 !important;
 	    }
 	    .type-card-head,
@@ -2173,8 +3265,78 @@
 	      min-height: 0;
 	    }
 	    .map-title p,
-	    .report-note {
+	    .report-note,
+	    .municipality-panel-head p,
+	    .municipality-status {
 	      font-size: 7.5pt;
+	    }
+	    .municipality-main {
+	      gap: 5mm;
+	      grid-template-columns: 148mm minmax(0, 1fr);
+	      height: 162mm;
+	      min-height: 0;
+	    }
+	    .municipality-panel-head {
+	      padding: 6px;
+	    }
+	    .municipality-panel-head span {
+	      font-size: 7pt;
+	    }
+	    .municipality-table {
+	      color: #111827 !important;
+	      font-size: 7.5pt;
+	    }
+	    .municipality-table th {
+	      background: #f9fafb !important;
+	    }
+	    .municipality-chart {
+	      gap: 2mm;
+	      grid-template-rows: repeat(2, minmax(0, 1fr));
+	      padding: 6px;
+	    }
+	    .chart-panel {
+	      gap: 1mm;
+	      grid-template-columns: 9mm minmax(0, 1fr);
+	      grid-template-rows: auto minmax(34mm, 1fr) auto auto;
+	    }
+	    .chart-title {
+	      color: #374151 !important;
+	      font-size: 7pt;
+	    }
+	    .municipality-table th,
+	    .municipality-table td {
+	      border-color: #d1d5db !important;
+	      padding: 4px 6px;
+	    }
+	    .chart-y-axis {
+	      color: #111827 !important;
+	      font-size: 8pt;
+	    }
+	    .chart-bars {
+	      border-color: #d1d5db !important;
+	      gap: 2mm;
+	      min-height: 34mm;
+	    }
+	    .bar-fill {
+	      width: 3mm;
+	    }
+	    .count-bar {
+	      background: #ff8a3d !important;
+	    }
+	    .km-bar {
+	      background: #19c37d !important;
+	    }
+	    .hour-bar {
+	      background: #4dabf7 !important;
+	    }
+	    .bar-axis {
+	      gap: 2mm;
+	      grid-template-columns: repeat(12, minmax(0, 1fr));
+	    }
+	    .bar-axis span,
+	    .bar-legend {
+	      color: #111827 !important;
+	      font-size: 8pt;
 	    }
 	    .map-frame {
 	      background: #f9fafb !important;
@@ -2198,7 +3360,8 @@
 	    body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 	  }
 	  @media screen and (max-width: 900px) {
-	    .report-main {
+	    .report-main,
+	    .municipality-main {
 	      grid-template-columns: 1fr;
 	    }
 	    .map-frame {
@@ -2222,6 +3385,7 @@
 	    <section class="report-main">
 	      <section class="summary-row" aria-label="Patrol type summary">
 	        ${summaryBlocks}
+	        ${combinedSummaryBlock}
 	      </section>
 	      <section class="map-panel">
 	        <div class="map-title">
@@ -2237,16 +3401,113 @@
 	      </section>
 	    </section>
 	  </main>
+	  <main class="report-page municipality-page">
+	    <header class="report-head">
+	      <div>
+	        <h1 class="brand-title">EarthRanger Patrol Manager</h1>
+	        <p class="report-subtitle">Municipality patrol summary and boundary metrics</p>
+	      </div>
+	      <p class="period">${periodLabel}</p>
+	    </header>
+	    <section class="municipality-main">
+	      <article class="municipality-panel">
+	        <div class="municipality-panel-head">
+	          <span>Municipality Patrol</span>
+	          <p>Patrols, kilometers, and hours grouped by the nearest listed municipal boundary to each patrol's starting GPS point.</p>
+	        </div>
+	        <table class="municipality-table" aria-label="Patrols per municipality">
+	          <thead>
+	            <tr>
+	              <th>Municipality</th>
+	              <th>No. of Patrols</th>
+	              <th>Total KMS</th>
+	              <th>Total HRS</th>
+	            </tr>
+	          </thead>
+	          <tbody id="municipality-table-body"></tbody>
+	        </table>
+	        <p class="municipality-status" id="municipality-status">Loading municipal boundary summary...</p>
+	      </article>
+	      <div class="municipality-chart" id="municipality-chart" aria-label="Municipality patrol metric bar chart"></div>
+	    </section>
+	  </main>
+	  <div class="info-dialog-backdrop" id="variance-info-dialog" role="dialog" aria-modal="true" aria-labelledby="variance-info-title">
+	    <article class="info-dialog">
+	      <div class="info-dialog-head">
+	        <h2 id="variance-info-title">Variance vs highest municipality (%)</h2>
+	        <button class="info-dialog-close" type="button" onclick="closeVarianceInfo()">Close</button>
+	      </div>
+	      <p>This chart compares every municipality against the municipality with the highest value for each metric in this report period.</p>
+	      <ul>
+	        <li>The highest municipality for a metric becomes 100%.</li>
+	        <li>Other municipalities show how close they are to that highest value.</li>
+	        <li>Each metric is normalized separately, so patrols are compared against the highest patrol count, KMS against the highest KMS, and HRS against the highest HRS.</li>
+	      </ul>
+	      <p>Example: if the highest Total KMS is 200 km and another municipality has 100 km, that municipality appears as 50% for Total KMS. The same percentage logic is applied separately to patrol count and hours.</p>
+	      <div class="variance-example" aria-label="Variance chart example">
+	        <div class="variance-example-row">
+	          <span class="variance-example-label">Highest KMS</span>
+	          <span class="variance-example-track"><span class="variance-example-fill" style="width:100%"></span></span>
+	          <span class="variance-example-value">100%</span>
+	        </div>
+	        <div class="variance-example-row">
+	          <span class="variance-example-label">Half KMS</span>
+	          <span class="variance-example-track"><span class="variance-example-fill" style="width:50%"></span></span>
+	          <span class="variance-example-value">50%</span>
+	        </div>
+	      </div>
+	    </article>
+	  </div>
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""><` + `/script>
 		  <script>
 	    const reportTracks = ${trackJson};
+	    const customBoundaries = ${customBoundaryJson};
+	    const reportMunicipalities = mergeReportMunicipalities(${municipalityJson}, customBoundaries.municipalities || []);
 	    let reportMap = null;
 	    let reportTrackBounds = null;
 	    let reportMapUserAdjusted = false;
+
+	    function mergeReportMunicipalities(baseMunicipalities, customMunicipalities) {
+	      const merged = [];
+	      const byName = new Map();
+	      [...baseMunicipalities, ...customMunicipalities].forEach((municipality) => {
+	        const name = String(municipality.name || '').trim();
+	        if (!name) return;
+	        const key = normalizeBoundaryName(name);
+	        const aliases = Array.isArray(municipality.aliases) ? municipality.aliases : [name];
+	        if (byName.has(key)) {
+	          const existing = byName.get(key);
+	          existing.aliases = [...new Set([...existing.aliases, ...aliases, name])];
+	          existing.overrideOfficial = existing.overrideOfficial === true || municipality.overrideOfficial === true;
+	          return;
+	        }
+	        const next = {
+	          island: municipality.island || 'Custom',
+	          name,
+	          aliases: [...new Set([...aliases, name])],
+	          overrideOfficial: municipality.overrideOfficial === true
+	        };
+	        byName.set(key, next);
+	        merged.push(next);
+	      });
+	      return merged;
+	    }
+
     function initReportMap() {
+      const varianceDialog = document.getElementById('variance-info-dialog');
+      if (varianceDialog) {
+        varianceDialog.addEventListener('click', (event) => {
+          if (event.target === varianceDialog) closeVarianceInfo();
+        });
+      }
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape') closeVarianceInfo();
+      });
+      renderMunicipalitySummary([]);
       const mapEl = document.getElementById('report-map');
       if (!window.L || !reportTracks.length) {
         mapEl.innerHTML = '<div class="map-empty">No GPS tracks available for this report period.</div>';
+        setMunicipalityStatus('No GPS tracks are available for boundary-based municipality counting.');
         return;
       }
 
@@ -2290,6 +3551,7 @@
 	      group.addTo(map);
 	      fitReportMapToTracks(map, group);
 	      loadMunicipalWaterBoundaries(map, group.getBounds());
+	      refreshReportMapLayout();
 
 	      setTimeout(() => {
 	        map.on('dragstart zoomstart', () => {
@@ -2300,6 +3562,7 @@
 
     async function loadMunicipalWaterBoundaries(map, bounds) {
       if (!bounds.isValid()) return;
+      const customFeatures = Array.isArray(customBoundaries.features) ? customBoundaries.features : [];
 
       const params = new URLSearchParams({
         f: 'geojson',
@@ -2322,9 +3585,16 @@
       try {
         const response = await fetch('https://services1.arcgis.com/RTK5Unh1Z71JKIiR/arcgis/rest/services/Municipal_Waters/FeatureServer/0/query?' + params);
         const geojson = await response.json();
-        if (!response.ok || !Array.isArray(geojson.features) || !geojson.features.length) return;
+        if (!response.ok || !Array.isArray(geojson.features)) throw new Error('ArcGIS boundary query failed');
+        const officialFeatures = geojson.features.filter((feature) => !featureIsOverriddenByCustom(feature));
+        const boundaryFeatures = [...officialFeatures, ...customFeatures];
+        if (!boundaryFeatures.length) {
+          renderMunicipalitySummary([]);
+          setMunicipalityStatus('No official or custom boundaries are available for this report.');
+          return;
+        }
 
-        L.geoJSON(geojson, {
+        if (officialFeatures.length) L.geoJSON({ type: 'FeatureCollection', features: officialFeatures }, {
           pane: 'municipalWaterPane',
           style: {
             color: '#1fb6ff',
@@ -2334,10 +3604,309 @@
             weight: 1.5
           }
         }).addTo(map);
+        drawCustomBoundaryLayer(map, customFeatures);
+        renderMunicipalitySummary(boundaryFeatures);
+        refreshReportMapLayout();
       } catch (error) {
         console.warn('Municipal water boundaries failed to load:', error.message);
+        if (customFeatures.length) {
+          drawCustomBoundaryLayer(map, customFeatures);
+          renderMunicipalitySummary(customFeatures);
+          refreshReportMapLayout();
+          setMunicipalityStatus('Official boundary data could not be loaded. Counts are based on saved custom boundaries.');
+          return;
+        }
+        renderMunicipalitySummary([]);
+        setMunicipalityStatus('Municipal boundary data could not be loaded and no custom boundaries are saved.');
       }
     }
+
+	    function featureIsOverriddenByCustom(feature) {
+	      return reportMunicipalities.some((municipality) => municipality.overrideOfficial === true && featureMatchesMunicipality(feature, municipality));
+	    }
+
+	    function drawCustomBoundaryLayer(map, features) {
+	      if (!features.length) return;
+	      L.geoJSON({ type: 'FeatureCollection', features }, {
+	        pane: 'municipalWaterPane',
+	        style: {
+	          color: '#f2d78f',
+	          fillColor: '#f2d78f',
+	          fillOpacity: 0.12,
+	          opacity: 0.95,
+	          weight: 2
+	        }
+	      }).addTo(map);
+	    }
+
+	    function renderMunicipalitySummary(boundaryFeatures) {
+	      const rows = buildMunicipalityRows(boundaryFeatures || []);
+	      const total = sumMunicipalityRows(rows);
+	      const max = maxMunicipalityMetric(rows);
+	      const tableBody = document.getElementById('municipality-table-body');
+	      const chart = document.getElementById('municipality-chart');
+	      if (!tableBody || !chart) return;
+
+	      tableBody.innerHTML = renderMunicipalityTableRows(rows, total);
+
+	      const rawChart = buildMunicipalityChart('Raw metrics', rows, max, (row) => ({
+	        count: row.count,
+	        kilometers: row.kilometers,
+	        hours: row.hours
+	      }), formatReportMetric);
+	      const maxByMetric = rows.reduce((summary, row) => ({
+	        count: Math.max(summary.count, row.count),
+	        kilometers: Math.max(summary.kilometers, row.kilometers),
+	        hours: Math.max(summary.hours, row.hours)
+	      }), { count: 0, kilometers: 0, hours: 0 });
+	      const varianceChart = buildMunicipalityChart('Variance vs highest municipality (%)', rows, 100, (row) => ({
+	        count: maxByMetric.count ? (row.count / maxByMetric.count) * 100 : 0,
+	        kilometers: maxByMetric.kilometers ? (row.kilometers / maxByMetric.kilometers) * 100 : 0,
+	        hours: maxByMetric.hours ? (row.hours / maxByMetric.hours) * 100 : 0
+	      }), (value) => Math.round(value) + '%');
+	      chart.innerHTML = rawChart + varianceChart;
+
+	      if (boundaryFeatures.length) {
+	        setMunicipalityStatus('Counts are based on each patrol starting GPS point matched to the nearest loaded municipal boundary line.');
+	      }
+	    }
+
+	    function renderMunicipalityTableRows(rows, total) {
+	      return rows.map((row) => {
+	        return '<tr><td>' + escapeReportHtml(row.name) + '</td><td>' + row.count.toLocaleString() + '</td><td>' + formatReportMetric(row.kilometers) + '</td><td>' + formatReportMetric(row.hours) + '</td></tr>';
+	      }).join('') + '<tr class="municipality-total-row"><td>Total</td><td>' + total.count.toLocaleString() + '</td><td>' + formatReportMetric(total.kilometers) + '</td><td>' + formatReportMetric(total.hours) + '</td></tr>';
+	    }
+
+	    function sumMunicipalityRows(rows) {
+	      return rows.reduce((sum, row) => ({
+	        count: sum.count + row.count,
+	        kilometers: sum.kilometers + row.kilometers,
+	        hours: sum.hours + row.hours
+	      }), { count: 0, kilometers: 0, hours: 0 });
+	    }
+
+	    function maxMunicipalityMetric(rows) {
+	      return rows.reduce((highest, row) => Math.max(highest, row.count, row.kilometers, row.hours), 0);
+	    }
+
+	    function buildMunicipalityRows(boundaryFeatures) {
+	      const municipalityFeatures = reportMunicipalities.map((municipality) => {
+	        return {
+	          ...municipality,
+	          features: boundaryFeatures.filter((feature) => featureMatchesMunicipality(feature, municipality)),
+	          patrolIds: new Set(),
+	          kilometers: 0,
+	          hours: 0
+	        };
+	      });
+
+	      reportTracks.forEach((track) => {
+	        const municipality = nearestStartMunicipality(track, municipalityFeatures);
+	        if (!municipality || municipality.patrolIds.has(track.patrolId)) return;
+	        municipality.patrolIds.add(track.patrolId);
+	        municipality.kilometers += Number(track.kilometers) || 0;
+	        municipality.hours += Number(track.hours) || 0;
+	      });
+
+	      return municipalityFeatures.map((municipality) => {
+	        return {
+	          island: municipality.island,
+	          name: municipality.name,
+	          count: municipality.patrolIds.size,
+	          kilometers: municipality.kilometers,
+	          hours: municipality.hours
+	        };
+	      });
+	    }
+
+	    function buildMunicipalityChart(title, rows, max, valueForRow, formatAxis) {
+	      const isVarianceChart = title.toLowerCase().includes('variance');
+	      const axisValues = [1, 0.75, 0.5, 0.25, 0].map((ratio) => formatAxis(max * ratio));
+	      const bars = rows.map((row) => {
+	        const values = valueForRow(row);
+	        const countHeight = max ? Math.max(1, Math.round((values.count / max) * 100)) : 0;
+	        const kmHeight = max ? Math.max(1, Math.round((values.kilometers / max) * 100)) : 0;
+	        const hourHeight = max ? Math.max(1, Math.round((values.hours / max) * 100)) : 0;
+	        return '<div class="bar-group"><div class="bar-fill count-bar" title="Patrols: ' + formatReportMetric(values.count) + '" style="height:' + countHeight + '%"></div><div class="bar-fill km-bar" title="KMS: ' + formatReportMetric(values.kilometers) + '" style="height:' + kmHeight + '%"></div><div class="bar-fill hour-bar" title="HRS: ' + formatReportMetric(values.hours) + '" style="height:' + hourHeight + '%"></div></div>';
+	      }).join('');
+	      const labels = rows.map((row) => '<span>' + escapeReportHtml(municipalityAbbreviation(row.name)) + '</span>').join('');
+	      const infoButton = isVarianceChart
+	        ? '<button class="chart-info-button" type="button" onclick="openVarianceInfo()" aria-label="Explain variance chart">i</button>'
+	        : '';
+	      return '<section class="chart-panel"><div class="chart-title"><span class="chart-title-text">' + escapeReportHtml(title) + '</span>' + infoButton + '</div><div class="chart-y-axis">' + axisValues.map((value) => '<span>' + escapeReportHtml(value) + '</span>').join('') + '</div><div class="chart-bars">' + bars + '</div><div class="bar-axis">' + labels + '</div><div class="bar-legend"><span class="legend-item"><span class="legend-swatch count-bar"></span>No. of patrols</span><span class="legend-item"><span class="legend-swatch km-bar"></span>Total KMS</span><span class="legend-item"><span class="legend-swatch hour-bar"></span>Total HRS</span></div></section>';
+	    }
+
+	    function openVarianceInfo() {
+	      const dialog = document.getElementById('variance-info-dialog');
+	      if (dialog) dialog.classList.add('open');
+	    }
+
+	    function closeVarianceInfo() {
+	      const dialog = document.getElementById('variance-info-dialog');
+	      if (dialog) dialog.classList.remove('open');
+	    }
+
+	    function nearestStartMunicipality(track, municipalities) {
+	      if (!Array.isArray(track.coords)) return null;
+	      const [lat, lon] = track.coords[0] || [];
+	      if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+	      return nearestMunicipalityForPoint(lon, lat, municipalities);
+	    }
+
+	    function nearestMunicipalityForPoint(lon, lat, municipalities) {
+	      let nearest = null;
+	      let nearestDistance = Infinity;
+	      municipalities.forEach((municipality) => {
+	        municipality.features.forEach((feature) => {
+	          const distance = pointToFeatureDistanceKm(lon, lat, feature);
+	          if (distance < nearestDistance) {
+	            nearestDistance = distance;
+	            nearest = municipality;
+	          }
+	        });
+	      });
+	      return nearest;
+	    }
+
+	    function municipalityAbbreviation(name) {
+	      const abbreviations = {
+	        'Calapan': 'CAL',
+	        'Baco': 'BAC',
+	        'San Teodoro': 'ST',
+	        'Puerto Galera': 'PG',
+	        'Sablayan': 'SAB',
+	        'Apo Reef Park': 'APO',
+	        'Roxas': 'ROX',
+	        'Aracelli': 'ARA',
+	        'El Nido': 'EN',
+	        'Dumaran': 'DUM',
+	        'Taytay': 'TAY',
+	        'Aborlan': 'ABO'
+	      };
+	      return abbreviations[name] || String(name || '').slice(0, 3).toUpperCase();
+	    }
+
+	    function formatReportMetric(value) {
+	      const number = Number(value) || 0;
+	      return number % 1 === 0 ? number.toLocaleString() : number.toFixed(2);
+	    }
+
+	    function featureMatchesMunicipality(feature, municipality) {
+	      const properties = feature && feature.properties ? feature.properties : {};
+	      const label = normalizeBoundaryName([
+	        properties.municipali,
+	        properties.municipality,
+	        properties.MUNICIPALI,
+	        properties.MUNICIPALITY,
+	        properties.name,
+	        properties.NAME
+	      ].filter(Boolean).join(' '));
+	      return municipality.aliases.some((alias) => label.includes(normalizeBoundaryName(alias)));
+	    }
+
+	    function pointToFeatureDistanceKm(lon, lat, feature) {
+	      const geometry = feature && feature.geometry;
+	      if (!geometry) return Infinity;
+	      if (pointInFeature(lon, lat, feature)) return 0;
+	      if (geometry.type === 'LineString') return pointToLineStringDistanceKm(lon, lat, geometry.coordinates);
+	      if (geometry.type === 'MultiLineString') {
+	        return geometry.coordinates.reduce((closest, line) => Math.min(closest, pointToLineStringDistanceKm(lon, lat, line)), Infinity);
+	      }
+	      if (geometry.type === 'Polygon') {
+	        return geometry.coordinates.reduce((closest, ring) => Math.min(closest, pointToLineStringDistanceKm(lon, lat, ring)), Infinity);
+	      }
+	      if (geometry.type === 'MultiPolygon') {
+	        return geometry.coordinates.reduce((closest, polygon) => {
+	          const polygonDistance = polygon.reduce((ringClosest, ring) => Math.min(ringClosest, pointToLineStringDistanceKm(lon, lat, ring)), Infinity);
+	          return Math.min(closest, polygonDistance);
+	        }, Infinity);
+	      }
+	      return Infinity;
+	    }
+
+	    function pointToLineStringDistanceKm(lon, lat, coordinates) {
+	      if (!Array.isArray(coordinates) || !coordinates.length) return Infinity;
+	      if (coordinates.length === 1) return pointDistanceKm(lon, lat, coordinates[0][0], coordinates[0][1]);
+	      let closest = Infinity;
+	      for (let index = 1; index < coordinates.length; index += 1) {
+	        closest = Math.min(closest, pointToSegmentDistanceKm(lon, lat, coordinates[index - 1], coordinates[index]));
+	      }
+	      return closest;
+	    }
+
+	    function pointToSegmentDistanceKm(lon, lat, start, end) {
+	      const refLat = lat * Math.PI / 180;
+	      const sx = (Number(start[0]) - lon) * 111.32 * Math.cos(refLat);
+	      const sy = (Number(start[1]) - lat) * 110.574;
+	      const ex = (Number(end[0]) - lon) * 111.32 * Math.cos(refLat);
+	      const ey = (Number(end[1]) - lat) * 110.574;
+	      const dx = ex - sx;
+	      const dy = ey - sy;
+	      const lengthSq = dx * dx + dy * dy;
+	      if (!lengthSq) return Math.hypot(sx, sy);
+	      const t = Math.max(0, Math.min(1, -(sx * dx + sy * dy) / lengthSq));
+	      return Math.hypot(sx + t * dx, sy + t * dy);
+	    }
+
+	    function pointDistanceKm(lon, lat, targetLon, targetLat) {
+	      const refLat = lat * Math.PI / 180;
+	      const x = (Number(targetLon) - lon) * 111.32 * Math.cos(refLat);
+	      const y = (Number(targetLat) - lat) * 110.574;
+	      return Math.hypot(x, y);
+	    }
+
+	    function pointInFeature(lon, lat, feature) {
+	      const geometry = feature && feature.geometry;
+	      if (!geometry) return false;
+	      if (geometry.type === 'Polygon') {
+	        return pointInPolygon(lon, lat, geometry.coordinates);
+	      }
+	      if (geometry.type === 'MultiPolygon') {
+	        return geometry.coordinates.some((polygon) => pointInPolygon(lon, lat, polygon));
+	      }
+	      return false;
+	    }
+
+	    function pointInPolygon(lon, lat, rings) {
+	      if (!Array.isArray(rings) || !rings.length) return false;
+	      if (!pointInRing(lon, lat, rings[0])) return false;
+	      for (let index = 1; index < rings.length; index += 1) {
+	        if (pointInRing(lon, lat, rings[index])) return false;
+	      }
+	      return true;
+	    }
+
+	    function pointInRing(lon, lat, ring) {
+	      let inside = false;
+	      for (let i = 0, j = ring.length - 1; i < ring.length; j = i, i += 1) {
+	        const xi = Number(ring[i][0]);
+	        const yi = Number(ring[i][1]);
+	        const xj = Number(ring[j][0]);
+	        const yj = Number(ring[j][1]);
+	        const intersects = ((yi > lat) !== (yj > lat)) && (lon < ((xj - xi) * (lat - yi)) / (yj - yi) + xi);
+	        if (intersects) inside = !inside;
+	      }
+	      return inside;
+	    }
+
+	    function normalizeBoundaryName(value) {
+	      return String(value || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+	    }
+
+	    function setMunicipalityStatus(message) {
+	      const status = document.getElementById('municipality-status');
+	      if (status) status.textContent = message;
+	    }
+
+	    function escapeReportHtml(value) {
+	      return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+	        '&': '&amp;',
+	        '<': '&lt;',
+	        '>': '&gt;',
+	        '"': '&quot;',
+	        "'": '&#39;'
+	      }[char]));
+	    }
 
 	    function fitReportMapToTracks(map, groupOrBounds) {
 	      const bounds = typeof groupOrBounds.getBounds === 'function' ? groupOrBounds.getBounds() : groupOrBounds;
@@ -2356,6 +3925,22 @@
       requestAnimationFrame(() => {
         fit();
 	        setTimeout(fit, 160);
+	      });
+	    }
+
+	    function refreshReportMapLayout() {
+	      if (!reportMap || !reportTrackBounds) return;
+	      [80, 250, 700, 1400].forEach((delay) => {
+	        setTimeout(() => {
+	          reportMap.invalidateSize({ animate: false, pan: false });
+	          if (!reportMapUserAdjusted) {
+	            reportMap.fitBounds(reportTrackBounds, {
+	              animate: false,
+	              maxZoom: 16,
+	              padding: [28, 28]
+	            });
+	          }
+	        }, delay);
 	      });
 	    }
 	    function fitReportMapForPrint() {
@@ -2377,9 +3962,10 @@
 	    });
     window.addEventListener('afterprint', () => {
       if (!reportMap) return;
-      setTimeout(() => reportMap.invalidateSize({ animate: false, pan: false }), 50);
+      refreshReportMapLayout();
     });
     initReportMap();
+    window.addEventListener('load', refreshReportMapLayout);
   <` + `/script>
 </body>
 </html>`;
@@ -2528,6 +4114,7 @@
         const hasError = Boolean(state.error);
         const isConnected = Boolean(state.health && state.health.ok);
         const filters = getFilters();
+        updateTimeWindowVisibility(filters);
         const visibleRows = getVisiblePatrols();
         const filtered = hasRestrictiveFilters(filters);
         const activePatrols = getActivePatrols();
@@ -2752,7 +4339,8 @@
           excludeTest: excludeTestFilter.checked,
           timeWindowEnabled: timeWindowEnabled.checked,
           timeFrom: timeFromFilter.value,
-          timeTo: timeToFilter.value
+          timeTo: timeToFilter.value,
+          timeFromOnly: timeFromOnlyFilter.checked
         };
       }
 
@@ -3030,15 +4618,19 @@
       }
 
       function matchesStartWindow(startDate, filters) {
-        if (!startDate || !filters.timeFrom || !filters.timeTo) return false;
+        if (!startDate || !filters.timeFrom) return false;
 
         const fromMinutes = timeToMinutes(filters.timeFrom);
-        const toMinutes = timeToMinutes(filters.timeTo);
         const startMinutes = startDate.getHours() * 60 + startDate.getMinutes();
         const startDateKey = localDateKey(startDate);
 
-        if (fromMinutes === null || toMinutes === null) return false;
+        if (fromMinutes === null) return false;
         if (!isDateInSelectedRange(startDateKey, filters.from, filters.to)) return false;
+        if (filters.timeFromOnly) return startMinutes >= fromMinutes;
+
+        if (!filters.timeTo) return false;
+        const toMinutes = timeToMinutes(filters.timeTo);
+        if (toMinutes === null) return false;
 
         if (fromMinutes <= toMinutes) {
           return startMinutes >= fromMinutes && startMinutes <= toMinutes;
@@ -3068,9 +4660,30 @@
 
       function setDefaultTemplatePeriod() {
         const today = new Date();
-        templateYearInput.value = String(today.getFullYear());
-        templateMonthSelect.value = String(today.getMonth() + 1);
-        updateTemplateWeekOptions(today);
+        const lastWeek = getLastCompletedWeek(today);
+        templateRangeSelect.value = 'weekly';
+        templateYearInput.value = String(lastWeek.start.getFullYear());
+        templateMonthSelect.value = String(lastWeek.start.getMonth() + 1);
+        updateTemplateWeekOptions(lastWeek.start);
+        templateWeekSelect.value = `${lastWeek.startKey}|${lastWeek.endKey}`;
+      }
+
+      function getLastCompletedWeek(referenceDate) {
+        const startOfThisWeek = new Date(referenceDate);
+        startOfThisWeek.setHours(0, 0, 0, 0);
+        startOfThisWeek.setDate(startOfThisWeek.getDate() - ((startOfThisWeek.getDay() + 6) % 7));
+
+        const start = new Date(startOfThisWeek);
+        start.setDate(startOfThisWeek.getDate() - 7);
+        const end = new Date(start);
+        end.setDate(start.getDate() + 6);
+
+        return {
+          start,
+          end,
+          startKey: localDateKey(start),
+          endKey: localDateKey(end)
+        };
       }
 
       function updateTemplatePeriodFields() {
@@ -3140,6 +4753,15 @@
           ? localDateKey(preferredDate)
           : '';
         const weeks = getMonthWeekPeriods(year, month);
+        if (preferredDate instanceof Date) {
+          const preferredWeek = getWeekPeriodForDate(preferredDate);
+          const preferredValue = `${preferredWeek.startKey}|${preferredWeek.endKey}`;
+          if (!weeks.some((week) => `${week.startKey}|${week.endKey}` === preferredValue)) {
+            weeks.push(preferredWeek);
+            weeks.sort((left, right) => left.startKey.localeCompare(right.startKey));
+          }
+        }
+
         templateWeekSelect.innerHTML = weeks.map((week, index) => {
           return `<option value="${week.startKey}|${week.endKey}" data-start="${week.startKey}" data-end="${week.endKey}">Week ${index + 1}: ${escapeHtml(week.label)}</option>`;
         }).join('');
@@ -3151,6 +4773,21 @@
 
         const preferredWeek = weeks.find((week) => preferredKey && preferredKey >= week.startKey && preferredKey <= week.endKey);
         if (preferredWeek) templateWeekSelect.value = `${preferredWeek.startKey}|${preferredWeek.endKey}`;
+      }
+
+      function getWeekPeriodForDate(value) {
+        const start = new Date(value);
+        start.setHours(0, 0, 0, 0);
+        start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
+        const end = new Date(start);
+        end.setDate(start.getDate() + 6);
+        return {
+          start,
+          end,
+          startKey: localDateKey(start),
+          endKey: localDateKey(end),
+          label: formatTemplatePeriodLabel(start, end)
+        };
       }
 
       function getMonthWeekPeriods(year, month) {
@@ -3241,6 +4878,8 @@
           return {
             patrolId,
             category: getTemplatePatrolCategory(item),
+            kilometers: getPatrolKilometers(item) || 0,
+            hours: getPatrolDurationMilliseconds(item) / 3600000,
             coords
           };
         } catch (error) {
@@ -3585,7 +5224,11 @@
         }
 
         if (filters.timeWindowEnabled) {
-          parts.push(`Time Coverage: ${filters.timeFrom || '--:--'} - ${filters.timeTo || '--:--'}`);
+          if (filters.timeFromOnly) {
+            parts.push(`Time Coverage: from ${filters.timeFrom || '--:--'} onward`);
+          } else {
+            parts.push(`Time Coverage: ${filters.timeFrom || '--:--'} - ${filters.timeTo || '--:--'}`);
+          }
         }
 
         if (filters.type) parts.push(`Type: ${filters.type}`);
@@ -3637,6 +5280,55 @@
         </div>
         <div id="map-modal-status" class="map-modal-status">Loading...</div>
         <div id="patrol-map" style="display: none;"></div>
+      </div>
+    </div>
+    <div id="boundary-modal" class="boundary-modal" role="dialog" aria-modal="true" aria-labelledby="boundary-modal-title">
+      <div class="boundary-modal-content">
+        <div class="boundary-modal-header">
+          <div>
+            <h3 id="boundary-modal-title" class="map-modal-title">Boundaries</h3>
+            <div class="map-modal-meta">Manage monitored report rows and custom map boundaries.</div>
+          </div>
+          <button type="button" class="map-modal-close" id="closeBoundaryEditorButton">Close</button>
+        </div>
+        <div class="boundary-editor-layout">
+          <div class="boundary-editor-side">
+            <div class="boundary-editor-actions">
+              <button class="load-more" id="newMunicipalityButton" type="button">Add Boundaries</button>
+              <button class="secondary-button" id="closeBoundaryMenuButton" type="button">Close</button>
+            </div>
+            <div class="municipality-manager-list" id="municipalityManagerList" aria-live="polite"></div>
+            <div class="field">
+              <label for="municipalityNameInput">Boundary name</label>
+              <input id="municipalityNameInput" type="text" placeholder="Example: Apo Reef Park" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="municipalityIslandInput">Area / group</label>
+              <input id="municipalityIslandInput" type="text" placeholder="Example: Palawan" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="municipalityAliasesInput">Aliases</label>
+              <input id="municipalityAliasesInput" type="text" placeholder="Comma-separated names for official boundary matching" autocomplete="off" />
+            </div>
+            <label class="checkbox-field" for="municipalityEnabledInput">
+              <input id="municipalityEnabledInput" type="checkbox" checked />
+              <span>Show in generated report table</span>
+            </label>
+            <p class="boundary-point-count" id="boundaryPointCount">0 points selected.</p>
+            <div class="boundary-editor-actions">
+              <button class="secondary-button" id="copyOfficialBoundaryButton" type="button">Copy Official Boundary</button>
+              <button class="secondary-button" id="undoBoundaryPointButton" type="button">Undo</button>
+              <button class="secondary-button" id="clearBoundaryDraftButton" type="button">Clear</button>
+            </div>
+            <p class="empty-note">Click the map to add or replace a custom boundary. Official rows can be hidden from reports when not needed.</p>
+          </div>
+          <div id="boundary-editor-map"></div>
+        </div>
+        <div class="boundary-modal-footer">
+          <button class="secondary-button" id="cancelBoundaryEditorButton" type="button">Close</button>
+          <button class="secondary-button" id="deleteMunicipalityButton" type="button">Delete / Hide</button>
+          <button class="load-more" id="saveBoundaryButton" type="button">Save Boundary</button>
+        </div>
       </div>
     </div>
   </body>
