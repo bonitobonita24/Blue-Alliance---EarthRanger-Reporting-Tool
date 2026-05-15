@@ -1,5 +1,6 @@
 import { getSubjectTracks } from '../lib/earthranger.js';
 import { getCachedPatrols } from '../lib/patrol-cache.js';
+import { readTrack } from '../lib/track-store.js';
 
 const trackCache = new Map();
 const TTL_MS = 10 * 60 * 1000;
@@ -40,6 +41,21 @@ export default async function handler(req, res) {
     const until = segment.time_range?.end_time || new Date().toISOString();
     if (!since) {
       return res.status(400).json({ error: 'Patrol has no start time' });
+    }
+
+    const diskTrack = await readTrack(stringId);
+    if (diskTrack) {
+      const payload = {
+        patrol_id: stringId,
+        subject_id: segment.leader.id,
+        subject_name: segment.leader.name || null,
+        since,
+        until,
+        tracks: diskTrack,
+        source: 'cache'
+      };
+      trackCache.set(stringId, { ts: Date.now(), payload });
+      return res.status(200).json(payload);
     }
 
     const response = await getSubjectTracks(subjectId, since, until);
