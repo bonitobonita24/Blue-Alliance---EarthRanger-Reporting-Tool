@@ -1776,7 +1776,7 @@
 
       async function loadOfficialBoundaryPreview(record) {
         clearOfficialBoundaryPreview();
-        if (!boundaryEditorMap || !record || record.source !== 'official' || record.overrideOfficial) return;
+        if (!boundaryEditorMap || !record || record.source !== 'official') return;
         try {
           officialBoundaryPreviewFeatures = [];
           const pointCount = document.getElementById('boundaryPointCount');
@@ -1820,7 +1820,11 @@
               boundaryEditorMap.fitBounds(bounds.pad(0.25), { animate: false });
             }, 80);
           }
-          if (pointCount) pointCount.textContent = 'Official boundary preview loaded. Draw and save your own boundary to override it.';
+          if (pointCount) {
+            pointCount.textContent = record.overrideOfficial
+              ? 'Override active — your saved copy is the report source of truth. The official line is shown for reference.'
+              : 'Official boundary preview loaded. Draw and save your own boundary to override it.';
+          }
         } catch (error) {
           console.warn('Official boundary preview failed:', error.message);
           const pointCount = document.getElementById('boundaryPointCount');
