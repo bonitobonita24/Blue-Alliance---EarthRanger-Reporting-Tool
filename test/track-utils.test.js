@@ -78,3 +78,47 @@ test('extractCoordinatesWithTimes flags hasTimestamps=false when times length mi
   const { hasTimestamps } = extractCoordinatesWithTimes(fc);
   assert.equal(hasTimestamps, false);
 });
+
+import {
+  haversineKm,
+  midpoint,
+  pointToLineDistanceKm,
+  nearestBoundary
+} from '../lib/track-utils.js';
+
+test('haversineKm zero distance for identical point', () => {
+  assert.equal(haversineKm([121.0, 13.0], [121.0, 13.0]), 0);
+});
+
+test('haversineKm ~ 111 km for 1 degree of latitude', () => {
+  const km = haversineKm([121.0, 13.0], [121.0, 14.0]);
+  assert.ok(km > 110 && km < 112, `expected ~111, got ${km}`);
+});
+
+test('midpoint returns average of two points', () => {
+  assert.deepEqual(midpoint([0, 0], [2, 4]), [1, 2]);
+});
+
+test('pointToLineDistanceKm: point on the line is ~0', () => {
+  const line = [[0, 0], [0, 2]];
+  const d = pointToLineDistanceKm([0, 1], line);
+  assert.ok(d < 0.001, `expected ~0, got ${d}`);
+});
+
+test('pointToLineDistanceKm: perpendicular point returns ~111 km for 1 degree at equator', () => {
+  const line = [[0, 0], [0, 1]];
+  const d = pointToLineDistanceKm([1, 0.5], line);
+  assert.ok(d > 100 && d < 120, `expected ~111, got ${d}`);
+});
+
+test('nearestBoundary picks the closer line', () => {
+  const boundaries = [
+    { id: 'A', name: 'A', geometryType: 'LineString', geometry: { type: 'LineString', coordinates: [[0, 0], [0, 2]] } },
+    { id: 'B', name: 'B', geometryType: 'LineString', geometry: { type: 'LineString', coordinates: [[10, 0], [10, 2]] } }
+  ];
+  assert.equal(nearestBoundary([0.5, 1], boundaries).id, 'A');
+});
+
+test('nearestBoundary returns null on empty input', () => {
+  assert.equal(nearestBoundary([0, 0], []), null);
+});
