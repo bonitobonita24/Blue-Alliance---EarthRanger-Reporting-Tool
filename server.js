@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import cacheRefreshHandler from './api/cache-refresh.js';
 import eventsHandler from './api/events.js';
 import healthHandler from './api/health.js';
+import areaCoveredHandler from './api/area-covered.js';
 import patrolKilometersHandler from './api/patrol-kilometers.js';
 import patrolTracksHandler from './api/patrol-tracks.js';
 import patrolsHandler from './api/patrols.js';
@@ -22,6 +23,7 @@ const apiRoutes = [
   { pattern: /^\/api\/cache-refresh\/?$/, handler: cacheRefreshHandler },
   { pattern: /^\/api\/health\/?$/, handler: healthHandler },
   { pattern: /^\/api\/events\/?$/, handler: eventsHandler },
+  { pattern: /^\/api\/area-covered\/?$/, handler: areaCoveredHandler },
   { pattern: /^\/api\/patrol-kilometers\/?$/, handler: patrolKilometersHandler },
   { pattern: /^\/api\/patrol-tracks\/?$/, handler: patrolTracksHandler },
   { pattern: /^\/api\/patrols\/?$/, handler: patrolsHandler },
