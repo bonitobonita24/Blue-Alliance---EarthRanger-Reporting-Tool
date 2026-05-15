@@ -130,3 +130,27 @@ test('multiple patrols accumulate into the same boundary buckets', async () => {
   assert.equal(north.coverage_patrols, 2);
   assert.ok(Math.abs(north.coverage_hrs - 30 / 60) < 0.01, `got ${north.coverage_hrs}`);
 });
+
+test('newest-first time order still produces positive coverage_hrs', async () => {
+  // EarthRanger returns track points newest-first. The aggregator must use
+  // absolute time delta per segment, not signed.
+  const track = {
+    type: 'FeatureCollection',
+    features: [{
+      type: 'Feature',
+      geometry: { type: 'LineString', coordinates: [[121.0, 13.5], [121.1, 13.5]] },
+      properties: {
+        coordinateProperties: { times: ['2026-05-04T10:10:00Z', '2026-05-04T10:00:00Z'] }
+      }
+    }]
+  };
+  await writeTrack('REV', track);
+  const result = await aggregateAreaCovered({
+    patrolIds: ['REV'],
+    boundaries: [boundaryNorth],
+    patrolHoursById: {}
+  });
+  const north = result.aggregates.NORTH;
+  assert.equal(north.coverage_patrols, 1);
+  assert.ok(Math.abs(north.coverage_hrs - 10 / 60) < 0.01, `got ${north.coverage_hrs}`);
+});
