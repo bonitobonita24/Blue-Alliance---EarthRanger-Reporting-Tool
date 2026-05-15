@@ -1,5 +1,6 @@
 import { getSubjectTracks } from '../lib/earthranger.js';
 import { getCachedPatrols } from '../lib/patrol-cache.js';
+import { extractCoordinates, haversineKm } from '../lib/track-utils.js';
 
 const kmCache = new Map();
 
@@ -70,60 +71,8 @@ async function fetchTrackKilometers(subjectId, since, until) {
   return computeTrackDistance(coordinates);
 }
 
-function extractCoordinates(data) {
-  if (!data) return [];
-
-  if (data.type === 'FeatureCollection' && Array.isArray(data.features)) {
-    const coords = [];
-    for (const feature of data.features) {
-      const geom = feature.geometry;
-      if (!geom?.coordinates) continue;
-      if (geom.type === 'LineString') {
-        coords.push(...geom.coordinates);
-      } else if (geom.type === 'MultiLineString') {
-        for (const line of geom.coordinates) coords.push(...line);
-      } else if (geom.type === 'Point') {
-        coords.push(geom.coordinates);
-      }
-    }
-    return coords;
-  }
-
-  if (data.type === 'Feature' && data.geometry?.coordinates) {
-    const geom = data.geometry;
-    if (geom.type === 'LineString') return geom.coordinates;
-    if (geom.type === 'MultiLineString') return geom.coordinates.flat();
-  }
-
-  if (Array.isArray(data.coordinates)) {
-    return data.coordinates;
-  }
-
-  if (Array.isArray(data)) {
-    return data.filter((p) => Array.isArray(p) && p.length >= 2);
-  }
-
-  return [];
-}
-
 function computeTrackDistance(coordinates) {
-  let totalKm = 0;
-  for (let i = 1; i < coordinates.length; i++) {
-    totalKm += haversineKm(coordinates[i - 1], coordinates[i]);
-  }
-  return Math.round(totalKm * 100) / 100;
-}
-
-function haversineKm([lon1, lat1], [lon2, lat2]) {
-  const R = 6371;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-}
-
-function toRad(deg) {
-  return (deg * Math.PI) / 180;
+  let total = 0;
+  for (let i = 1; i < coordinates.length; i++) total += haversineKm(coordinates[i - 1], coordinates[i]);
+  return Math.round(total * 100) / 100;
 }
