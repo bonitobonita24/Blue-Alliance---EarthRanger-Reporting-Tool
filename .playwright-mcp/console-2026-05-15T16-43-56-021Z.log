@@ -1,0 +1,3 @@
+[   12509ms] [ERROR] Failed to load resource: the server responded with a status of 400 (Bad Request) @ http://localhost:41739/api/area-covered:0
+[  350367ms] [WARNING] Official boundary preview failed: normalizeBoundaryName is not defined @ http://localhost:41739/:1828
+[  366101ms] [WARNING] Official boundary preview failed: normalizeBoundaryName is not defined @ http://localhost:41739/:1828

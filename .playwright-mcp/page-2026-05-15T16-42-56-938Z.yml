@@ -1,0 +1,569 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e5]: ER
+      - generic [ref=e6]:
+        - heading "EarthRanger Patrol Manager" [level=1] [ref=e7]
+        - paragraph [ref=e8]: Mindoro operations feed
+    - button "Boundaries" [ref=e10] [cursor=pointer]
+  - main [ref=e11]:
+    - region "Active patrols summary" [ref=e12]:
+      - article [ref=e13]:
+        - generic [ref=e14]:
+          - generic [ref=e15]: Active Patrols
+          - generic "Active patrols by type" [ref=e16]:
+            - generic [ref=e17]:
+              - generic [ref=e18]: Foot
+              - strong [ref=e19]: "1"
+            - generic [ref=e20]:
+              - generic [ref=e21]: Seaborne
+              - strong [ref=e22]: "1"
+        - generic [ref=e23]:
+          - generic [ref=e24]: Total Active
+          - strong [ref=e25]: "2"
+      - article [ref=e26]:
+        - paragraph [ref=e28]: Active Patrols List
+        - generic [ref=e29]:
+          - generic [ref=e98]:
+            - generic [ref=e99]: "4698"
+            - generic [ref=e100]:
+              - strong [ref=e101]: Installations of MPA marking buoys
+              - generic [ref=e102]:
+                - generic [ref=e103]: Seaborne Patrol
+                - generic [ref=e104]: 185h 57m
+                - generic [ref=e105]: May 8, 2026, 06:45 AM
+                - generic [ref=e106]: Ian Catalino
+            - generic [ref=e107]: Active
+          - generic [ref=e108]:
+            - generic [ref=e109]: "4706"
+            - generic [ref=e110]:
+              - strong [ref=e111]: Poblacion to tabuk buenavista - mpa
+              - generic [ref=e112]:
+                - generic [ref=e113]: Foot Patrol
+                - generic [ref=e114]: 178h 45m
+                - generic [ref=e115]: May 8, 2026, 01:56 PM
+                - generic [ref=e116]: Apo Reef BA
+            - generic [ref=e117]: Active
+    - generic [ref=e31]:
+      - complementary "Patrol controls" [ref=e32]:
+        - region "Patrol filters and sorting" [ref=e33]:
+          - generic [ref=e35]:
+            - paragraph [ref=e36]: Manage list
+            - paragraph [ref=e37]: Filter and sort loaded patrols
+          - generic [ref=e38]:
+            - generic [ref=e39]:
+              - generic [ref=e40]: Search
+              - searchbox "Search" [ref=e41]
+            - generic [ref=e42]:
+              - generic [ref=e43]: Tracked by
+              - generic "Selected tracked by users"
+              - searchbox "Tracked by" [ref=e44]
+            - generic [ref=e45]:
+              - generic [ref=e46]: Patrol type
+              - combobox "Patrol type" [ref=e47]:
+                - option "All types" [selected]
+                - option "Foot Patrol"
+                - option "Seaborne Patrol"
+            - generic [ref=e48]:
+              - generic [ref=e49]: Status
+              - combobox "Status" [ref=e50]:
+                - option "All, including ongoing" [selected]
+                - option "Ongoing only"
+                - option "Open"
+                - option "Closed"
+            - generic [ref=e51]:
+              - generic [ref=e52]: From
+              - textbox "From" [ref=e53]: 2026-05-10
+            - generic [ref=e54]:
+              - generic [ref=e55]: To
+              - textbox "To" [ref=e56]: 2026-05-16
+            - generic [ref=e57]:
+              - checkbox "Exclude test patrols" [checked] [ref=e58]
+              - generic [ref=e59]: Exclude test patrols
+            - generic [ref=e60]:
+              - checkbox "Show only actively ongoing patrols" [ref=e61]
+              - generic [ref=e62]: Show only actively ongoing patrols
+            - generic [ref=e63]:
+              - checkbox "Advanced start time window" [ref=e64]
+              - generic [ref=e65]: Advanced start time window
+            - generic [ref=e66]:
+              - button "Generate Report" [ref=e67] [cursor=pointer]
+              - button "Clear filters" [ref=e68] [cursor=pointer]
+              - button "Refresh Cache" [ref=e69] [cursor=pointer]
+        - region "Report template generation" [ref=e70]:
+          - generic [ref=e72]:
+            - paragraph [ref=e73]: Report template
+            - paragraph [ref=e74]: Generate period summaries and GPS map
+          - generic [ref=e75]:
+            - generic [ref=e76]:
+              - generic [ref=e77]: Group range
+              - combobox "Group range" [ref=e78]:
+                - option "Weekly" [selected]
+                - option "Monthly"
+                - option "Annual Report"
+            - generic [ref=e79]:
+              - generic [ref=e80]: Year
+              - spinbutton "Year" [ref=e81]: "2026"
+            - generic [ref=e82]:
+              - generic [ref=e83]: Month
+              - combobox "Month" [ref=e84]:
+                - option "January"
+                - option "February"
+                - option "March"
+                - option "April"
+                - option "May" [selected]
+                - option "June"
+                - option "July"
+                - option "August"
+                - option "September"
+                - option "October"
+                - option "November"
+                - option "December"
+            - generic [ref=e85]:
+              - generic [ref=e86]: Week
+              - combobox "Week" [ref=e87]:
+                - 'option "Week 1: May 1-3, 2026"'
+                - 'option "Week 2: May 4-10, 2026" [selected]'
+                - 'option "Week 3: May 11-17, 2026"'
+                - 'option "Week 4: May 18-24, 2026"'
+                - 'option "Week 5: May 25-31, 2026"'
+            - button "Generate Template Report" [ref=e88] [cursor=pointer]
+      - generic [ref=e89]:
+        - generic [ref=e91]:
+          - paragraph [ref=e92]: Patrol index
+          - paragraph [ref=e93]: 32 results from May 10, 2026 to May 16, 2026
+        - tabpanel [ref=e94]:
+          - table "Patrol index" [ref=e118]:
+            - rowgroup [ref=e119]:
+              - row "Patrol ID Patrol Type Patrol Title / Description Tracked By Total Hours Kilometers Start Date ▼ End Date Start Location End Location" [ref=e120]:
+                - columnheader "Patrol ID" [ref=e121] [cursor=pointer]
+                - columnheader "Patrol Type" [ref=e122] [cursor=pointer]
+                - columnheader "Patrol Title / Description" [ref=e123] [cursor=pointer]
+                - columnheader "Tracked By" [ref=e124] [cursor=pointer]
+                - columnheader "Total Hours" [ref=e125] [cursor=pointer]
+                - columnheader "Kilometers" [ref=e126] [cursor=pointer]
+                - columnheader "Start Date ▼" [ref=e127] [cursor=pointer]
+                - columnheader "End Date" [ref=e128] [cursor=pointer]
+                - columnheader "Start Location" [ref=e129] [cursor=pointer]
+                - columnheader "End Location" [ref=e130] [cursor=pointer]
+            - rowgroup [ref=e131]:
+              - row "4750 Seaborne Patrol SABLAYAN pier to pandan grande may 15/2026/ Apo Reef BA 1h 13m 28.65 km View May 15, 2026, 01:39 PM May 15, 2026, 02:53 PM 12.83304, 120.76888 12.83353, 120.76806" [ref=e132]:
+                - cell "4750" [ref=e133]
+                - cell "Seaborne Patrol" [ref=e134]
+                - cell "SABLAYAN pier to pandan grande may 15/2026/" [ref=e135]
+                - cell "Apo Reef BA" [ref=e136]
+                - cell "1h 13m" [ref=e137]
+                - cell "28.65 km View" [ref=e138]:
+                  - text: 28.65 km
+                  - button "View" [ref=e139] [cursor=pointer]
+                - cell "May 15, 2026, 01:39 PM" [ref=e140]
+                - cell "May 15, 2026, 02:53 PM" [ref=e141]
+                - cell "12.83304, 120.76888" [ref=e142]
+                - cell "12.83353, 120.76806" [ref=e143]
+              - row "4748 Foot Patrol PG Aga, Noriel, Remar. Sto. Niño Henry De Leon 10h 13m 9.27 km View May 15, 2026, 09:10 AM May 15, 2026, 07:23 PM 13.50331, 120.94291 13.52475, 120.96853" [ref=e144]:
+                - cell "4748" [ref=e145]
+                - cell "Foot Patrol" [ref=e146]
+                - cell "PG Aga, Noriel, Remar. Sto. Niño" [ref=e147]
+                - cell "Henry De Leon" [ref=e148]
+                - cell "10h 13m" [ref=e149]
+                - cell "9.27 km View" [ref=e150]:
+                  - text: 9.27 km
+                  - button "View" [ref=e151] [cursor=pointer]
+                - cell "May 15, 2026, 09:10 AM" [ref=e152]
+                - cell "May 15, 2026, 07:23 PM" [ref=e153]
+                - cell "13.50331, 120.94291" [ref=e154]
+                - cell "13.52475, 120.96853" [ref=e155]
+              - row "4749 Seaborne Patrol El Nido-from river bank to 2 (MPA)tigpuro and bangkalungan -Baluarte,Cabildo,Cabiguen, Andaya -05/15/26 Benedicto Cabiguen Sr. 1h 53m 10.98 km View May 15, 2026, 08:56 AM May 15, 2026, 10:49 AM 11.26811, 119.56392 11.26862, 119.56433" [ref=e156]:
+                - cell "4749" [ref=e157]
+                - cell "Seaborne Patrol" [ref=e158]
+                - cell "El Nido-from river bank to 2 (MPA)tigpuro and bangkalungan -Baluarte,Cabildo,Cabiguen, Andaya -05/15/26" [ref=e159]
+                - cell "Benedicto Cabiguen Sr." [ref=e160]
+                - cell "1h 53m" [ref=e161]
+                - cell "10.98 km View" [ref=e162]:
+                  - text: 10.98 km
+                  - button "View" [ref=e163] [cursor=pointer]
+                - cell "May 15, 2026, 08:56 AM" [ref=e164]
+                - cell "May 15, 2026, 10:49 AM" [ref=e165]
+                - cell "11.26811, 119.56392" [ref=e166]
+                - cell "11.26862, 119.56433" [ref=e167]
+              - row "4747 Seaborne Patrol Sabang port to pandan grande,Avel Dantayana,Jun Tesalona,Raymond Tenorio.May 15,2026. Mark Jomar Tiongson 4h 56m 10.08 km View May 15, 2026, 08:42 AM May 15, 2026, 01:39 PM 12.84088, 120.77684 12.84283, 120.77363" [ref=e168]:
+                - cell "4747" [ref=e169]
+                - cell "Seaborne Patrol" [ref=e170]
+                - cell "Sabang port to pandan grande,Avel Dantayana,Jun Tesalona,Raymond Tenorio.May 15,2026." [ref=e171]
+                - cell "Mark Jomar Tiongson" [ref=e172]
+                - cell "4h 56m" [ref=e173]
+                - cell "10.08 km View" [ref=e174]:
+                  - text: 10.08 km
+                  - button "View" [ref=e175] [cursor=pointer]
+                - cell "May 15, 2026, 08:42 AM" [ref=e176]
+                - cell "May 15, 2026, 01:39 PM" [ref=e177]
+                - cell "12.84088, 120.77684" [ref=e178]
+                - cell "12.84283, 120.77363" [ref=e179]
+              - row "4746 Foot Patrol CAL-NAV-05-15-26 Robert Pawikan 2h 22m 6.58 km View May 15, 2026, 06:40 AM May 15, 2026, 09:03 AM 13.35744, 121.25289 13.35720, 121.25282" [ref=e180]:
+                - cell "4746" [ref=e181]
+                - cell "Foot Patrol" [ref=e182]
+                - cell "CAL-NAV-05-15-26" [ref=e183]
+                - cell "Robert Pawikan" [ref=e184]
+                - cell "2h 22m" [ref=e185]
+                - cell "6.58 km View" [ref=e186]:
+                  - text: 6.58 km
+                  - button "View" [ref=e187] [cursor=pointer]
+                - cell "May 15, 2026, 06:40 AM" [ref=e188]
+                - cell "May 15, 2026, 09:03 AM" [ref=e189]
+                - cell "13.35744, 121.25289" [ref=e190]
+                - cell "13.35720, 121.25282" [ref=e191]
+              - row "4741 Foot Patrol pg foot patrol sto nino to sabang and big la laguna henry,aga,remar, Noriel,may13-2026 Henry De Leon 6h 36m 17.21 km View May 14, 2026, 01:01 PM May 14, 2026, 07:37 PM 13.50334, 120.94337 13.50280, 120.95312" [ref=e192]:
+                - cell "4741" [ref=e193]
+                - cell "Foot Patrol" [ref=e194]
+                - cell "pg foot patrol sto nino to sabang and big la laguna henry,aga,remar, Noriel,may13-2026" [ref=e195]
+                - cell "Henry De Leon" [ref=e196]
+                - cell "6h 36m" [ref=e197]
+                - cell "17.21 km View" [ref=e198]:
+                  - text: 17.21 km
+                  - button "View" [ref=e199] [cursor=pointer]
+                - cell "May 14, 2026, 01:01 PM" [ref=e200]
+                - cell "May 14, 2026, 07:37 PM" [ref=e201]
+                - cell "13.50334, 120.94337" [ref=e202]
+                - cell "13.50280, 120.95312" [ref=e203]
+              - row "4743 Seaborne Patrol ARA- FROM POBLACION- ERA REEF- ZALDY- BENJIE- TERSO- EFREN- 05-14-2026. Benjamin lagata 1h 20m 14.31 km View May 14, 2026, 09:37 AM May 14, 2026, 10:58 AM 10.62085, 119.87912 10.62080, 119.87918" [ref=e204]:
+                - cell "4743" [ref=e205]
+                - cell "Seaborne Patrol" [ref=e206]
+                - cell "ARA- FROM POBLACION- ERA REEF- ZALDY- BENJIE- TERSO- EFREN- 05-14-2026." [ref=e207]
+                - cell "Benjamin lagata" [ref=e208]
+                - cell "1h 20m" [ref=e209]
+                - cell "14.31 km View" [ref=e210]:
+                  - text: 14.31 km
+                  - button "View" [ref=e211] [cursor=pointer]
+                - cell "May 14, 2026, 09:37 AM" [ref=e212]
+                - cell "May 14, 2026, 10:58 AM" [ref=e213]
+                - cell "10.62085, 119.87912" [ref=e214]
+                - cell "10.62080, 119.87918" [ref=e215]
+              - row "4739 Foot Patrol Cal market denial Alister Lumat 4h 7m 32.77 km View May 14, 2026, 08:59 AM May 14, 2026, 01:07 PM 13.41864, 121.18685 13.40049, 121.18159" [ref=e216]:
+                - cell "4739" [ref=e217]
+                - cell "Foot Patrol" [ref=e218]
+                - cell "Cal market denial" [ref=e219]
+                - cell "Alister Lumat" [ref=e220]
+                - cell "4h 7m" [ref=e221]
+                - cell "32.77 km View" [ref=e222]:
+                  - text: 32.77 km
+                  - button "View" [ref=e223] [cursor=pointer]
+                - cell "May 14, 2026, 08:59 AM" [ref=e224]
+                - cell "May 14, 2026, 01:07 PM" [ref=e225]
+                - cell "13.41864, 121.18685" [ref=e226]
+                - cell "13.40049, 121.18159" [ref=e227]
+              - row "4738 Seaborne Patrol Sabang port to pandan grande and pandan piqueno,Jun Tesalona Avel Dantayana Raymond Tenorio,May14,2026. Mark Jomar Tiongson 5h 31m 9.67 km View May 14, 2026, 08:18 AM May 14, 2026, 01:49 PM 12.84207, 120.77503 12.84349, 120.77418" [ref=e228]:
+                - cell "4738" [ref=e229]
+                - cell "Seaborne Patrol" [ref=e230]
+                - cell "Sabang port to pandan grande and pandan piqueno,Jun Tesalona Avel Dantayana Raymond Tenorio,May14,2026." [ref=e231]
+                - cell "Mark Jomar Tiongson" [ref=e232]
+                - cell "5h 31m" [ref=e233]
+                - cell "9.67 km View" [ref=e234]:
+                  - text: 9.67 km
+                  - button "View" [ref=e235] [cursor=pointer]
+                - cell "May 14, 2026, 08:18 AM" [ref=e236]
+                - cell "May 14, 2026, 01:49 PM" [ref=e237]
+                - cell "12.84207, 120.77503" [ref=e238]
+                - cell "12.84349, 120.77418" [ref=e239]
+              - row "4740 Foot Patrol DUM- FROM POBLACION PROPER TO SITIO TELBAN - BIMBOY, GODOFREDO- MAY 14, 2026 Godofredo Aligato 3h 23m 43.46 km View May 14, 2026, 07:37 AM May 14, 2026, 11:01 AM 10.53059, 119.77175 10.52579, 119.76631" [ref=e240]:
+                - cell "4740" [ref=e241]
+                - cell "Foot Patrol" [ref=e242]
+                - cell "DUM- FROM POBLACION PROPER TO SITIO TELBAN - BIMBOY, GODOFREDO- MAY 14, 2026" [ref=e243]
+                - cell "Godofredo Aligato" [ref=e244]
+                - cell "3h 23m" [ref=e245]
+                - cell "43.46 km View" [ref=e246]:
+                  - text: 43.46 km
+                  - button "View" [ref=e247] [cursor=pointer]
+                - cell "May 14, 2026, 07:37 AM" [ref=e248]
+                - cell "May 14, 2026, 11:01 AM" [ref=e249]
+                - cell "10.53059, 119.77175" [ref=e250]
+                - cell "10.52579, 119.76631" [ref=e251]
+              - row "4745 Foot Patrol El Nido-from barangay sibaltan to barangay Villa paz-Baluarte,Cabildo -05/14/26 Benedicto Cabiguen Sr. 3h 33m 24.71 km View May 14, 2026, 07:18 AM May 14, 2026, 10:52 AM 11.26864, 119.56463 11.26856, 119.56434" [ref=e252]:
+                - cell "4745" [ref=e253]
+                - cell "Foot Patrol" [ref=e254]
+                - cell "El Nido-from barangay sibaltan to barangay Villa paz-Baluarte,Cabildo -05/14/26" [ref=e255]
+                - cell "Benedicto Cabiguen Sr." [ref=e256]
+                - cell "3h 33m" [ref=e257]
+                - cell "24.71 km View" [ref=e258]:
+                  - text: 24.71 km
+                  - button "View" [ref=e259] [cursor=pointer]
+                - cell "May 14, 2026, 07:18 AM" [ref=e260]
+                - cell "May 14, 2026, 10:52 AM" [ref=e261]
+                - cell "11.26864, 119.56463" [ref=e262]
+                - cell "11.26856, 119.56434" [ref=e263]
+              - row "4744 Foot Patrol El Nido-from barangay sibaltan to Villa paz-Baluarte, Cabildo -05/14/26 Benedicto Cabiguen Sr. 5m - View May 14, 2026, 07:11 AM May 14, 2026, 07:17 AM 11.26398, 119.56279 11.26817, 119.56372" [ref=e264]:
+                - cell "4744" [ref=e265]
+                - cell "Foot Patrol" [ref=e266]
+                - cell "El Nido-from barangay sibaltan to Villa paz-Baluarte, Cabildo -05/14/26" [ref=e267]
+                - cell "Benedicto Cabiguen Sr." [ref=e268]
+                - cell "5m" [ref=e269]
+                - cell "- View" [ref=e270]:
+                  - text: "-"
+                  - button "View" [ref=e271] [cursor=pointer]
+                - cell "May 14, 2026, 07:11 AM" [ref=e272]
+                - cell "May 14, 2026, 07:17 AM" [ref=e273]
+                - cell "11.26398, 119.56279" [ref=e274]
+                - cell "11.26817, 119.56372" [ref=e275]
+              - row "4737 Foot Patrol CAL-NAV-05-14-26 Robert Pawikan 2h 21m 6.97 km View May 14, 2026, 05:57 AM May 14, 2026, 08:19 AM 13.35741, 121.25287 13.35744, 121.25284" [ref=e276]:
+                - cell "4737" [ref=e277]
+                - cell "Foot Patrol" [ref=e278]
+                - cell "CAL-NAV-05-14-26" [ref=e279]
+                - cell "Robert Pawikan" [ref=e280]
+                - cell "2h 21m" [ref=e281]
+                - cell "6.97 km View" [ref=e282]:
+                  - text: 6.97 km
+                  - button "View" [ref=e283] [cursor=pointer]
+                - cell "May 14, 2026, 05:57 AM" [ref=e284]
+                - cell "May 14, 2026, 08:19 AM" [ref=e285]
+                - cell "13.35741, 121.25287" [ref=e286]
+                - cell "13.35744, 121.25284" [ref=e287]
+              - row "4742 Seaborne Patrol ARA FROM- RANGER STATION- HART REEF- ZALDY EFREN TERSO BENJIE- 05-13-2026. Benjamin lagata 5h 56m 77.61 km View May 13, 2026, 08:38 PM May 14, 2026, 02:35 AM 10.58995, 119.86788 10.62085, 119.87912" [ref=e288]:
+                - cell "4742" [ref=e289]
+                - cell "Seaborne Patrol" [ref=e290]
+                - cell "ARA FROM- RANGER STATION- HART REEF- ZALDY EFREN TERSO BENJIE- 05-13-2026." [ref=e291]
+                - cell "Benjamin lagata" [ref=e292]
+                - cell "5h 56m" [ref=e293]
+                - cell "77.61 km View" [ref=e294]:
+                  - text: 77.61 km
+                  - button "View" [ref=e295] [cursor=pointer]
+                - cell "May 13, 2026, 08:38 PM" [ref=e296]
+                - cell "May 14, 2026, 02:35 AM" [ref=e297]
+                - cell "10.58995, 119.86788" [ref=e298]
+                - cell "10.62085, 119.87912" [ref=e299]
+              - row "4735 Foot Patrol PG Sto Niño Aga Remar Noriel Mamerto 05,13,2026 Henry De Leon 5h 48m 15.11 km View May 13, 2026, 01:48 PM May 13, 2026, 07:36 PM 13.50316, 120.94378 13.50332, 120.94347" [ref=e300]:
+                - cell "4735" [ref=e301]
+                - cell "Foot Patrol" [ref=e302]
+                - cell "PG Sto Niño Aga Remar Noriel Mamerto 05,13,2026" [ref=e303]
+                - cell "Henry De Leon" [ref=e304]
+                - cell "5h 48m" [ref=e305]
+                - cell "15.11 km View" [ref=e306]:
+                  - text: 15.11 km
+                  - button "View" [ref=e307] [cursor=pointer]
+                - cell "May 13, 2026, 01:48 PM" [ref=e308]
+                - cell "May 13, 2026, 07:36 PM" [ref=e309]
+                - cell "13.50316, 120.94378" [ref=e310]
+                - cell "13.50332, 120.94347" [ref=e311]
+              - row "4734 Foot Patrol Cal pawikan training Alister Lumat 4h 27m 7.31 km View May 13, 2026, 09:32 AM May 13, 2026, 01:59 PM 13.39919, 121.17396 13.40049, 121.18157" [ref=e312]:
+                - cell "4734" [ref=e313]
+                - cell "Foot Patrol" [ref=e314]
+                - cell "Cal pawikan training" [ref=e315]
+                - cell "Alister Lumat" [ref=e316]
+                - cell "4h 27m" [ref=e317]
+                - cell "7.31 km View" [ref=e318]:
+                  - text: 7.31 km
+                  - button "View" [ref=e319] [cursor=pointer]
+                - cell "May 13, 2026, 09:32 AM" [ref=e320]
+                - cell "May 13, 2026, 01:59 PM" [ref=e321]
+                - cell "13.39919, 121.17396" [ref=e322]
+                - cell "13.40049, 121.18157" [ref=e323]
+              - row "4733 Seaborne Patrol Sabang port to pandan grande and pandan piqueno,Avel Dantayana,Raymond Tenorio,Jun Tesalona,May 13,2026. Mark Jomar Tiongson 4h 4m 9.88 km View May 13, 2026, 08:29 AM May 13, 2026, 12:34 PM 12.84111, 120.77504 12.84327, 120.77396" [ref=e324]:
+                - cell "4733" [ref=e325]
+                - cell "Seaborne Patrol" [ref=e326]
+                - cell "Sabang port to pandan grande and pandan piqueno,Avel Dantayana,Raymond Tenorio,Jun Tesalona,May 13,2026." [ref=e327]
+                - cell "Mark Jomar Tiongson" [ref=e328]
+                - cell "4h 4m" [ref=e329]
+                - cell "9.88 km View" [ref=e330]:
+                  - text: 9.88 km
+                  - button "View" [ref=e331] [cursor=pointer]
+                - cell "May 13, 2026, 08:29 AM" [ref=e332]
+                - cell "May 13, 2026, 12:34 PM" [ref=e333]
+                - cell "12.84111, 120.77504" [ref=e334]
+                - cell "12.84327, 120.77396" [ref=e335]
+              - row "4736 Foot Patrol Dum -Bakod From Pob.Dumaran Bimboy Biason 8h 35m 29.10 km View May 13, 2026, 08:22 AM May 13, 2026, 04:57 PM 10.52466, 119.76683 10.52474, 119.76723" [ref=e336]:
+                - cell "4736" [ref=e337]
+                - cell "Foot Patrol" [ref=e338]
+                - cell "Dum -Bakod From Pob.Dumaran" [ref=e339]
+                - cell "Bimboy Biason" [ref=e340]
+                - cell "8h 35m" [ref=e341]
+                - cell "29.10 km View" [ref=e342]:
+                  - text: 29.10 km
+                  - button "View" [ref=e343] [cursor=pointer]
+                - cell "May 13, 2026, 08:22 AM" [ref=e344]
+                - cell "May 13, 2026, 04:57 PM" [ref=e345]
+                - cell "10.52466, 119.76683" [ref=e346]
+                - cell "10.52474, 119.76723" [ref=e347]
+              - row "4728 Foot Patrol CAL-NAV-05-12-26 Robert Pawikan 4h 25m 6.18 km View May 12, 2026, 03:33 PM May 12, 2026, 07:59 PM 13.35748, 121.25284 13.35742, 121.25290" [ref=e348]:
+                - cell "4728" [ref=e349]
+                - cell "Foot Patrol" [ref=e350]
+                - cell "CAL-NAV-05-12-26" [ref=e351]
+                - cell "Robert Pawikan" [ref=e352]
+                - cell "4h 25m" [ref=e353]
+                - cell "6.18 km View" [ref=e354]:
+                  - text: 6.18 km
+                  - button "View" [ref=e355] [cursor=pointer]
+                - cell "May 12, 2026, 03:33 PM" [ref=e356]
+                - cell "May 12, 2026, 07:59 PM" [ref=e357]
+                - cell "13.35748, 121.25284" [ref=e358]
+                - cell "13.35742, 121.25290" [ref=e359]
+              - row "4727 Foot Patrol PG Sto Niño Remar Aga Noriel Mamerto 05,12,2026 Henry De Leon 5h 22m 10.78 km View May 12, 2026, 02:22 PM May 12, 2026, 07:44 PM 13.50321, 120.94374 13.50332, 120.94353" [ref=e360]:
+                - cell "4727" [ref=e361]
+                - cell "Foot Patrol" [ref=e362]
+                - cell "PG Sto Niño Remar Aga Noriel Mamerto 05,12,2026" [ref=e363]
+                - cell "Henry De Leon" [ref=e364]
+                - cell "5h 22m" [ref=e365]
+                - cell "10.78 km View" [ref=e366]:
+                  - text: 10.78 km
+                  - button "View" [ref=e367] [cursor=pointer]
+                - cell "May 12, 2026, 02:22 PM" [ref=e368]
+                - cell "May 12, 2026, 07:44 PM" [ref=e369]
+                - cell "13.50321, 120.94374" [ref=e370]
+                - cell "13.50332, 120.94353" [ref=e371]
+              - row "4731 Foot Patrol DUM-Bakod From Pob.Dumaran-Godofredo Alligato , BIJER Biason Bimboy Biason 8h 35m 40.94 km View May 12, 2026, 10:14 AM May 12, 2026, 06:49 PM 10.53069, 119.77168 10.52480, 119.76713" [ref=e372]:
+                - cell "4731" [ref=e373]
+                - cell "Foot Patrol" [ref=e374]
+                - cell "DUM-Bakod From Pob.Dumaran-Godofredo Alligato , BIJER Biason" [ref=e375]
+                - cell "Bimboy Biason" [ref=e376]
+                - cell "8h 35m" [ref=e377]
+                - cell "40.94 km View" [ref=e378]:
+                  - text: 40.94 km
+                  - button "View" [ref=e379] [cursor=pointer]
+                - cell "May 12, 2026, 10:14 AM" [ref=e380]
+                - cell "May 12, 2026, 06:49 PM" [ref=e381]
+                - cell "10.53069, 119.77168" [ref=e382]
+                - cell "10.52480, 119.76713" [ref=e383]
+              - row "4726 Foot Patrol Cal pawikan training Alister Lumat 12h 5m 49.45 km View May 12, 2026, 08:46 AM May 12, 2026, 08:52 PM 13.41806, 121.18719 13.39990, 121.18238" [ref=e384]:
+                - cell "4726" [ref=e385]
+                - cell "Foot Patrol" [ref=e386]
+                - cell "Cal pawikan training" [ref=e387]
+                - cell "Alister Lumat" [ref=e388]
+                - cell "12h 5m" [ref=e389]
+                - cell "49.45 km View" [ref=e390]:
+                  - text: 49.45 km
+                  - button "View" [ref=e391] [cursor=pointer]
+                - cell "May 12, 2026, 08:46 AM" [ref=e392]
+                - cell "May 12, 2026, 08:52 PM" [ref=e393]
+                - cell "13.41806, 121.18719" [ref=e394]
+                - cell "13.39990, 121.18238" [ref=e395]
+              - row "4725 Seaborne Patrol Sabang port to pandan grande and pandan piqueno ,Avel Dantayana,Raymond Tenorio,Jun Tesalona ,May12,2026. Mark Jomar Tiongson 5h 35m 10.20 km View May 12, 2026, 08:20 AM May 12, 2026, 01:55 PM 12.84306, 120.77370 12.84342, 120.77417" [ref=e396]:
+                - cell "4725" [ref=e397]
+                - cell "Seaborne Patrol" [ref=e398]
+                - cell "Sabang port to pandan grande and pandan piqueno ,Avel Dantayana,Raymond Tenorio,Jun Tesalona ,May12,2026." [ref=e399]
+                - cell "Mark Jomar Tiongson" [ref=e400]
+                - cell "5h 35m" [ref=e401]
+                - cell "10.20 km View" [ref=e402]:
+                  - text: 10.20 km
+                  - button "View" [ref=e403] [cursor=pointer]
+                - cell "May 12, 2026, 08:20 AM" [ref=e404]
+                - cell "May 12, 2026, 01:55 PM" [ref=e405]
+                - cell "12.84306, 120.77370" [ref=e406]
+                - cell "12.84342, 120.77417" [ref=e407]
+              - row "4724 Seaborne Patrol ARA- FROM- RANGER STATION- BINTUAN BAY. ZALDY BENJIE TERSO EFREN- 05-11-2026. Benjamin lagata 7h 14m 31.96 km View May 11, 2026, 07:16 PM May 12, 2026, 02:31 AM 10.62370, 119.87667 10.62091, 119.87911" [ref=e408]:
+                - cell "4724" [ref=e409]
+                - cell "Seaborne Patrol" [ref=e410]
+                - cell "ARA- FROM- RANGER STATION- BINTUAN BAY. ZALDY BENJIE TERSO EFREN- 05-11-2026." [ref=e411]
+                - cell "Benjamin lagata" [ref=e412]
+                - cell "7h 14m" [ref=e413]
+                - cell "31.96 km View" [ref=e414]:
+                  - text: 31.96 km
+                  - button "View" [ref=e415] [cursor=pointer]
+                - cell "May 11, 2026, 07:16 PM" [ref=e416]
+                - cell "May 12, 2026, 02:31 AM" [ref=e417]
+                - cell "10.62370, 119.87667" [ref=e418]
+                - cell "10.62091, 119.87911" [ref=e419]
+              - row "4732 Foot Patrol ADI foot patrol apias MPA Roden Madrigal 26h 9m 18.00 km View May 11, 2026, 07:03 PM May 12, 2026, 09:13 PM 13.64076, 120.87053 13.48277, 120.83205" [ref=e420]:
+                - cell "4732" [ref=e421]
+                - cell "Foot Patrol" [ref=e422]
+                - cell "ADI foot patrol apias MPA" [ref=e423]
+                - cell "Roden Madrigal" [ref=e424]
+                - cell "26h 9m" [ref=e425]
+                - cell "18.00 km View" [ref=e426]:
+                  - text: 18.00 km
+                  - button "View" [ref=e427] [cursor=pointer]
+                - cell "May 11, 2026, 07:03 PM" [ref=e428]
+                - cell "May 12, 2026, 09:13 PM" [ref=e429]
+                - cell "13.64076, 120.87053" [ref=e430]
+                - cell "13.48277, 120.83205" [ref=e431]
+              - row "4721 Foot Patrol CAL-NAV-05-11-26 Robert Pawikan 3h 12m 6.11 km View May 11, 2026, 05:39 PM May 11, 2026, 08:51 PM 13.35747, 121.25282 13.35741, 121.25286" [ref=e432]:
+                - cell "4721" [ref=e433]
+                - cell "Foot Patrol" [ref=e434]
+                - cell "CAL-NAV-05-11-26" [ref=e435]
+                - cell "Robert Pawikan" [ref=e436]
+                - cell "3h 12m" [ref=e437]
+                - cell "6.11 km View" [ref=e438]:
+                  - text: 6.11 km
+                  - button "View" [ref=e439] [cursor=pointer]
+                - cell "May 11, 2026, 05:39 PM" [ref=e440]
+                - cell "May 11, 2026, 08:51 PM" [ref=e441]
+                - cell "13.35747, 121.25282" [ref=e442]
+                - cell "13.35741, 121.25286" [ref=e443]
+              - row "4730 Foot Patrol Dum-From Pob.Dumaran -Bijer Biason and BIMBOY Biason Bimboy Biason 8h 27m 53.18 km View May 11, 2026, 09:15 AM May 11, 2026, 05:42 PM 10.52540, 119.76719 10.52489, 119.76724" [ref=e444]:
+                - cell "4730" [ref=e445]
+                - cell "Foot Patrol" [ref=e446]
+                - cell "Dum-From Pob.Dumaran -Bijer Biason and BIMBOY Biason" [ref=e447]
+                - cell "Bimboy Biason" [ref=e448]
+                - cell "8h 27m" [ref=e449]
+                - cell "53.18 km View" [ref=e450]:
+                  - text: 53.18 km
+                  - button "View" [ref=e451] [cursor=pointer]
+                - cell "May 11, 2026, 09:15 AM" [ref=e452]
+                - cell "May 11, 2026, 05:42 PM" [ref=e453]
+                - cell "10.52540, 119.76719" [ref=e454]
+                - cell "10.52489, 119.76724" [ref=e455]
+              - row "4720 Foot Patrol Visibility BFAR - Occ. Mdo. Eufenie Madrigal 23m 4.07 km View May 11, 2026, 09:01 AM May 11, 2026, 09:25 AM 12.83914, 120.76840 12.83907, 120.76824" [ref=e456]:
+                - cell "4720" [ref=e457]
+                - cell "Foot Patrol" [ref=e458]
+                - cell "Visibility" [ref=e459]
+                - cell "BFAR - Occ. Mdo. Eufenie Madrigal" [ref=e460]
+                - cell "23m" [ref=e461]
+                - cell "4.07 km View" [ref=e462]:
+                  - text: 4.07 km
+                  - button "View" [ref=e463] [cursor=pointer]
+                - cell "May 11, 2026, 09:01 AM" [ref=e464]
+                - cell "May 11, 2026, 09:25 AM" [ref=e465]
+                - cell "12.83914, 120.76840" [ref=e466]
+                - cell "12.83907, 120.76824" [ref=e467]
+              - row "4719 Seaborne Patrol Sabang port to pandan grande and pandan piqueno,Avel Dantayana,Raymond Tenorio,Jun Tesalona,May 11,2026. Mark Jomar Tiongson 5h 13m 9.71 km View May 11, 2026, 08:32 AM May 11, 2026, 01:45 PM 12.84319, 120.77378 12.84340, 120.77384" [ref=e468]:
+                - cell "4719" [ref=e469]
+                - cell "Seaborne Patrol" [ref=e470]
+                - cell "Sabang port to pandan grande and pandan piqueno,Avel Dantayana,Raymond Tenorio,Jun Tesalona,May 11,2026." [ref=e471]
+                - cell "Mark Jomar Tiongson" [ref=e472]
+                - cell "5h 13m" [ref=e473]
+                - cell "9.71 km View" [ref=e474]:
+                  - text: 9.71 km
+                  - button "View" [ref=e475] [cursor=pointer]
+                - cell "May 11, 2026, 08:32 AM" [ref=e476]
+                - cell "May 11, 2026, 01:45 PM" [ref=e477]
+                - cell "12.84319, 120.77378" [ref=e478]
+                - cell "12.84340, 120.77384" [ref=e479]
+              - row "4722 Foot Patrol Cal pawikan training Alister Lumat 11h 10m 49.79 km View May 11, 2026, 08:30 AM May 11, 2026, 07:41 PM 13.41345, 121.18210 13.41800, 121.18715" [ref=e480]:
+                - cell "4722" [ref=e481]
+                - cell "Foot Patrol" [ref=e482]
+                - cell "Cal pawikan training" [ref=e483]
+                - cell "Alister Lumat" [ref=e484]
+                - cell "11h 10m" [ref=e485]
+                - cell "49.79 km View" [ref=e486]:
+                  - text: 49.79 km
+                  - button "View" [ref=e487] [cursor=pointer]
+                - cell "May 11, 2026, 08:30 AM" [ref=e488]
+                - cell "May 11, 2026, 07:41 PM" [ref=e489]
+                - cell "13.41345, 121.18210" [ref=e490]
+                - cell "13.41800, 121.18715" [ref=e491]
+              - row "4723 Seaborne Patrol ARA- FROM POBLACION- ERA reef -efren TERSO BENJIE ZALDY- 05-11-2026. Benjamin lagata 6h 14m 29.30 km View May 11, 2026, 08:28 AM May 11, 2026, 02:43 PM 10.54973, 119.98615 10.62094, 119.87922" [ref=e492]:
+                - cell "4723" [ref=e493]
+                - cell "Seaborne Patrol" [ref=e494]
+                - cell "ARA- FROM POBLACION- ERA reef -efren TERSO BENJIE ZALDY- 05-11-2026." [ref=e495]
+                - cell "Benjamin lagata" [ref=e496]
+                - cell "6h 14m" [ref=e497]
+                - cell "29.30 km View" [ref=e498]:
+                  - text: 29.30 km
+                  - button "View" [ref=e499] [cursor=pointer]
+                - cell "May 11, 2026, 08:28 AM" [ref=e500]
+                - cell "May 11, 2026, 02:43 PM" [ref=e501]
+                - cell "10.54973, 119.98615" [ref=e502]
+                - cell "10.62094, 119.87922" [ref=e503]
+              - row "4718 Seaborne Patrol ARA- FROM- POBLACION- LANGOY ISLAND- ZALDY BENJIE TERSO EFREN- 05-10-2026. Benjamin lagata 4h 13m 24.30 km View May 10, 2026, 07:59 PM May 11, 2026, 12:13 AM 10.54965, 119.98616 10.54966, 119.98615" [ref=e504]:
+                - cell "4718" [ref=e505]
+                - cell "Seaborne Patrol" [ref=e506]
+                - cell "ARA- FROM- POBLACION- LANGOY ISLAND- ZALDY BENJIE TERSO EFREN- 05-10-2026." [ref=e507]
+                - cell "Benjamin lagata" [ref=e508]
+                - cell "4h 13m" [ref=e509]
+                - cell "24.30 km View" [ref=e510]:
+                  - text: 24.30 km
+                  - button "View" [ref=e511] [cursor=pointer]
+                - cell "May 10, 2026, 07:59 PM" [ref=e512]
+                - cell "May 11, 2026, 12:13 AM" [ref=e513]
+                - cell "10.54965, 119.98616" [ref=e514]
+                - cell "10.54966, 119.98615" [ref=e515]
+            - rowgroup [ref=e516]:
+              - row "32 patrols" [ref=e517]:
+                - cell "32 patrols" [ref=e518]
+        - generic "Patrol index horizontal scroll" [ref=e519]

@@ -154,3 +154,29 @@ test('newest-first time order still produces positive coverage_hrs', async () =>
   assert.equal(north.coverage_patrols, 1);
   assert.ok(Math.abs(north.coverage_hrs - 10 / 60) < 0.01, `got ${north.coverage_hrs}`);
 });
+
+test('boundaries shaped as GeoJSON Features key by properties.id', async () => {
+  // Production payload — municipalityToFeature puts id/name under .properties.
+  const featureNorth = {
+    type: 'Feature',
+    properties: { id: 'NORTH', name: 'North' },
+    geometry: { type: 'LineString', coordinates: [[120.0, 13.5], [122.0, 13.5]] }
+  };
+  const track = {
+    type: 'FeatureCollection',
+    features: [{
+      type: 'Feature',
+      geometry: { type: 'LineString', coordinates: [[121.0, 13.5], [121.1, 13.5]] },
+      properties: { coordinateProperties: { times: ['2026-05-04T10:00:00Z', '2026-05-04T10:05:00Z'] } }
+    }]
+  };
+  await writeTrack('PF1', track);
+  const result = await aggregateAreaCovered({
+    patrolIds: ['PF1'],
+    boundaries: [featureNorth],
+    patrolHoursById: {}
+  });
+  assert.ok(result.aggregates.NORTH, 'expected aggregate keyed by properties.id, got: ' + JSON.stringify(Object.keys(result.aggregates)));
+  assert.equal(result.aggregates.NORTH.boundary_name, 'North');
+  assert.equal(result.aggregates.NORTH.coverage_patrols, 1);
+});
