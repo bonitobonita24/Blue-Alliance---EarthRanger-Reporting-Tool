@@ -1,0 +1,118 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - generic [ref=e4]:
+      - generic [ref=e5]: ER
+      - generic [ref=e6]:
+        - heading "EarthRanger Patrol Manager" [level=1] [ref=e7]
+        - paragraph [ref=e8]: Mindoro operations feed
+    - button "Boundaries" [ref=e10] [cursor=pointer]
+  - main [ref=e11]:
+    - region "Active patrols summary" [ref=e12]:
+      - article [ref=e13]:
+        - generic [ref=e14]:
+          - generic [ref=e15]: Active Patrols
+          - generic "Active patrols by type" [ref=e16]:
+            - generic [ref=e17]:
+              - generic [ref=e18]: Foot
+              - strong [ref=e19]: "0"
+            - generic [ref=e20]:
+              - generic [ref=e21]: Seaborne
+              - strong [ref=e22]: "0"
+        - generic [ref=e23]:
+          - generic [ref=e24]: Total Active
+          - strong [ref=e25]: "0"
+      - article [ref=e26]:
+        - paragraph [ref=e28]: Active Patrols List
+        - generic [ref=e30]: Loading active patrols...
+    - generic [ref=e31]:
+      - complementary "Patrol controls" [ref=e32]:
+        - region "Patrol filters and sorting" [ref=e33]:
+          - generic [ref=e35]:
+            - paragraph [ref=e36]: Manage list
+            - paragraph [ref=e37]: Filter and sort loaded patrols
+          - generic [ref=e38]:
+            - generic [ref=e39]:
+              - generic [ref=e40]: Search
+              - searchbox "Search" [ref=e41]
+            - generic [ref=e42]:
+              - generic [ref=e43]: Tracked by
+              - generic "Selected tracked by users"
+              - searchbox "Tracked by" [ref=e44]
+            - generic [ref=e45]:
+              - generic [ref=e46]: Patrol type
+              - combobox "Patrol type" [ref=e47]:
+                - option "All types" [selected]
+                - option "Foot Patrol"
+                - option "Seaborne Patrol"
+            - generic [ref=e48]:
+              - generic [ref=e49]: Status
+              - combobox "Status" [ref=e50]:
+                - option "All, including ongoing" [selected]
+                - option "Ongoing only"
+                - option "Open"
+                - option "Closed"
+            - generic [ref=e51]:
+              - generic [ref=e52]: From
+              - textbox "From" [ref=e53]: 2026-05-10
+            - generic [ref=e54]:
+              - generic [ref=e55]: To
+              - textbox "To" [ref=e56]: 2026-05-16
+            - generic [ref=e57]:
+              - checkbox "Exclude test patrols" [checked] [ref=e58]
+              - generic [ref=e59]: Exclude test patrols
+            - generic [ref=e60]:
+              - checkbox "Show only actively ongoing patrols" [ref=e61]
+              - generic [ref=e62]: Show only actively ongoing patrols
+            - generic [ref=e63]:
+              - checkbox "Advanced start time window" [ref=e64]
+              - generic [ref=e65]: Advanced start time window
+            - generic [ref=e66]:
+              - button "Generate Report" [ref=e67] [cursor=pointer]
+              - button "Clear filters" [ref=e68] [cursor=pointer]
+              - button "Refresh Cache" [ref=e69] [cursor=pointer]
+        - region "Report template generation" [ref=e70]:
+          - generic [ref=e72]:
+            - paragraph [ref=e73]: Report template
+            - paragraph [ref=e74]: Generate period summaries and GPS map
+          - generic [ref=e75]:
+            - generic [ref=e76]:
+              - generic [ref=e77]: Group range
+              - combobox "Group range" [ref=e78]:
+                - option "Weekly" [selected]
+                - option "Monthly"
+                - option "Annual Report"
+            - generic [ref=e79]:
+              - generic [ref=e80]: Year
+              - spinbutton "Year" [ref=e81]: "2026"
+            - generic [ref=e82]:
+              - generic [ref=e83]: Month
+              - combobox "Month" [ref=e84]:
+                - option "January"
+                - option "February"
+                - option "March"
+                - option "April"
+                - option "May" [selected]
+                - option "June"
+                - option "July"
+                - option "August"
+                - option "September"
+                - option "October"
+                - option "November"
+                - option "December"
+            - generic [ref=e85]:
+              - generic [ref=e86]: Week
+              - combobox "Week" [ref=e87]:
+                - 'option "Week 1: May 1-3, 2026"'
+                - 'option "Week 2: May 4-10, 2026" [selected]'
+                - 'option "Week 3: May 11-17, 2026"'
+                - 'option "Week 4: May 18-24, 2026"'
+                - 'option "Week 5: May 25-31, 2026"'
+            - button "Generate Template Report" [ref=e88] [cursor=pointer]
+      - generic [ref=e89]:
+        - generic [ref=e91]:
+          - paragraph [ref=e92]: Patrol index
+          - paragraph [ref=e93]: 0 results from May 10, 2026 to May 16, 2026
+        - tabpanel [ref=e94]:
+          - generic [ref=e95]:
+            - strong [ref=e96]: Loading patrol index...
+            - paragraph [ref=e97]: Fetching the latest EarthRanger patrol records.
