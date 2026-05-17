@@ -298,6 +298,209 @@ Internal:
 
 ---
 
+## 7.1 EarthRanger Connection: Establishing & Verifying
+
+This is the bootstrap procedure an operator (or an AI rebuilding from scratch) must follow before the dashboard is usable. The app cannot synthesize an EarthRanger; it must point at a real instance and authenticate.
+
+**Step 1 — Obtain credentials from the EarthRanger administrator.** Exactly ONE of:
+
+- A long-lived **API token** (preferred) → `ER_TOKEN`. Issued via the ER admin UI under *User → Personal API Tokens* (or by an instance admin).
+- A legacy **tracks token** → `ER_TRACK_TOKEN`. Used by older PAMDAS deployments.
+- A legacy **DAS web token** → `DAS_WEB_TOKEN`.
+- A service-account **username + password** → `ER_USERNAME` + `ER_PASSWORD`. The client Base64-encodes these into a `Basic` header. Acceptable but discouraged because it implies session/cookie auth on some instances.
+
+The token's role/permissions must allow:
+
+| Endpoint | Used by |
+|---|---|
+| `GET /subjects/?page_size=1` | `/api/health` connectivity probe |
+| `GET /activity/patrols/` | List sync, dashboard live mode |
+| `GET /activity/patrols/<id>/` | Sync-candidate refresh |
+| `GET /activity/events/` | `/api/events` pass-through |
+| `GET /subject/<id>/tracks/?since=&until=` | Track persistence + map modal |
+| `POST /activity/patrols/` | UI patrol create (optional) |
+| `PATCH /activity/patrols/<id>/` | UI patrol edit (optional) |
+
+If the token lacks any **read** scope, the corresponding feature degrades silently — the dashboard renders, but tracks or events will be empty. If it lacks **write** scope, the affected button surfaces the ER 403 verbatim.
+
+**Step 2 — Set `ER_BASE_URL`.** Use the **host root only** without `/api/v1.0`:
+
+- `https://my-org.pamdas.org` ✓
+- `https://earthranger.example.com/api/v1.0` ✓ (also accepted; client detects and keeps it)
+- `https://earthranger.example.com/` ✓ (trailing slash trimmed)
+- `my-org.pamdas.org` ✗ (missing scheme → `fetch` throws)
+
+The client normalizes this once at module load via `getBaseUrl()`.
+
+**Step 3 — Smoke-test from the host, OUTSIDE the container.** This isolates network/auth issues from app issues:
+
+```bash
+# With bearer
+curl -sS -H "Authorization: Bearer $ER_TOKEN" \
+  "$ER_BASE_URL/api/v1.0/subjects/?page_size=1" | head -c 400
+
+# With basic
+curl -sS -u "$ER_USERNAME:$ER_PASSWORD" \
+  "$ER_BASE_URL/api/v1.0/subjects/?page_size=1" | head -c 400
+```
+
+Expected: `200 OK` with `{ "data": { "results": [ ... ] } }`. Any other outcome (HTTP 401/403/404, DNS failure, TLS error, timeout) must be resolved here. Booting the dashboard against a broken connection just produces a sync engine that fails every 2/10 minutes and stamps `lastError` repeatedly.
+
+**Step 4 — Write `.env.local`** (do NOT commit). Minimum viable file:
+
+```dotenv
+ER_BASE_URL=https://my-org.pamdas.org
+ER_TOKEN=eyJhbGc...
+ER_TIMEOUT_MS=30000
+```
+
+`.env.example` is the shipped template; `.env.local` is the gitignored real one consumed by `docker-compose.yml` via `env_file`.
+
+**Step 5 — Start the app and verify the in-app health endpoint:**
+
+```bash
+docker compose up -d --build
+curl localhost:41739/api/health
+# → { "ok": true, "earthranger": "ok", "time": "2026-..." }
+```
+
+If `earthranger: "unreachable"`, inspect `detail` — it is the verbatim error from `testConnection()` (no stack, just the ER payload or HTTP message).
+
+**Step 6 — Confirm the first deep-sync has fired:**
+
+```bash
+curl -s localhost:41739/api/sync-status | jq
+# → look for lastDeepSync (ISO timestamp) and cache.totalCached > 0
+```
+
+`lastDeepSync` is stamped at the end of every successful deep-sync. If after ~10 minutes it is still `null` and `lastError` is non-null, the sync engine cannot reach ER even though the health probe passed — usually a permissions or `/activity/patrols/` scope issue.
+
+**Step 7 — Optional fast-prime the cache.** With an empty `data/patrol-cache.json`, the deep-sync alone could take hours to walk historic patrols. For instant fill:
+
+```bash
+docker compose exec earthranger-reporting-tool npm run cache:backfill
+```
+
+The script paginates `/activity/patrols/?page_size=200` until `next === null` or the dup-plateau hits, writing each batch with `source: 'backfill'`. It is idempotent and safe to re-run.
+
+**Step 8 — Production hardening.** Once the cache is primed and `/api/health` is green, gate the port:
+
+- Put the container behind a reverse proxy (Caddy, nginx, Traefik) or VPN — the app has no auth (§22.2).
+- Set `restart: unless-stopped` in compose (already specified).
+- Schedule `tar czf backup-$(date +%F).tgz data/` nightly on the host (§22.4).
+
+---
+
+## 7.2 EarthRanger API Limits & Resilience
+
+EarthRanger does **not** publish formal rate limits. The deployed PAMDAS / partner instances we target generally do not enforce server-side throttling. The client therefore takes a **conservative, self-throttling** posture — it never bursts. The table below is the contract; deviations from these defaults must be justified.
+
+### 7.2.1 Implemented throttles (client-side)
+
+| Concern | Default | Configurable via | Notes |
+|---|---|---|---|
+| Per-request timeout | 30 000 ms | `ER_TIMEOUT_MS` | `AbortController`; throws `AbortError` on expiry. |
+| Track-fetch concurrency | 4 in-flight | `TRACK_FETCH_CONCURRENCY` (const) | Enforced by `asyncPool`. Errors swallowed per-item. |
+| Active-check page size | 100 | `PATROL_SYNC_LATEST_PAGE_SIZE` | Patrol list pagination. |
+| Active-check max pages | 5 | `PATROL_SYNC_LATEST_PAGES` | Hard cap: 500 patrols per active tick. |
+| Active-check interval | 120 000 ms | `ACTIVE_CHECK_INTERVAL_MS` | `setInterval` is `unref()`-ed. |
+| Active-check candidate refresh | 50 patrols | const | Serial single-patrol GETs after pagination. |
+| Deep-sync page size | 200 | const `DEEP_SYNC_PAGE_SIZE` | If ER caps lower, deep-sync silently truncates. |
+| Deep-sync max pages | 100 | const `DEEP_SYNC_MAX_PAGES` | Hard ceiling: 20 000 patrols per deep-sync. |
+| Deep-sync interval | 600 000 ms | `DEEP_SYNC_INTERVAL_MS` | Also fires once on startup. |
+| Track window | `[segment.start_time, end_time ?? now]` | n/a | Not sliced; one fetch per patrol. |
+| Overlap protection | Mutex flag | n/a | Concurrent `runDeepSync` calls return existing status. |
+
+Sustained worst-case outbound load on EarthRanger:
+
+- **List requests:** `5 + 100 = 105` per 10-minute cycle ≈ 1 request every 5–6 s peak.
+- **Per-patrol GETs:** ≤50 per active check + per-patrol refreshes during deep sync, serialized.
+- **Track GETs:** capped at 4 in-flight, processed in `asyncPool` batches; one GET per new/active patrol per cycle.
+
+### 7.2.2 Gaps to verify against YOUR EarthRanger instance
+
+Before going to production, the operator (or AI) MUST verify:
+
+1. **Maximum `page_size` actually honored** by `/activity/patrols/`. PAMDAS commonly caps at 200; some instances cap lower. If yours caps at 100, change `DEEP_SYNC_PAGE_SIZE` to 100 — otherwise deep-sync paginates against a server that's silently returning short pages, and history beyond `100 × DEEP_SYNC_MAX_PAGES = 10 000` is invisible.
+2. **Track-window upper bound.** Does `/subject/<id>/tracks/?since=&until=` truncate beyond N days? Long-running patrols (>30 days) would need slicing.
+3. **Concurrent connection cap per token.** If your instance is shared with other tools, lower `TRACK_FETCH_CONCURRENCY` to 2.
+4. **Rate-limit headers.** Inspect a real response for `X-RateLimit-Limit`, `X-RateLimit-Remaining`, `Retry-After`. If present, see §7.2.3.
+5. **Auth lifetime.** Some ER instances rotate tokens automatically; others use 1-year statics. If yours rotates, document the rotation cadence and add a calendar reminder.
+
+A simple verification one-liner (run from the host):
+
+```bash
+curl -sS -D- -H "Authorization: Bearer $ER_TOKEN" \
+  "$ER_BASE_URL/api/v1.0/activity/patrols/?page_size=500" \
+  | sed -n '1,20p'
+```
+
+Look at the response headers and the actual `results.length`. If `results.length < 500`, the server is enforcing a smaller cap.
+
+### 7.2.3 Resilience features NOT YET implemented (planned)
+
+The current implementation has **no retries, no backoff, and no rate-limit handling**. Every error fails the current cycle; the next tick fires on its normal schedule. This is acceptable for the trusted-network ops model we target but is the first thing to harden if EarthRanger becomes shared, public, or rate-limited.
+
+Spec for the next iteration (do NOT silently add these — they are breaking changes to observability):
+
+- **Retry with exponential backoff** on `5xx` and `fetch`-level network errors. 3 attempts, `500 ms / 2 s / 5 s`, ±20% jitter, capped at 2 retries per request, surfaced in `lastError` if the final attempt fails.
+- **Respect `Retry-After`** on `429` and `503`. Pause the affected timer (active or deep) for the suggested duration; if header absent, default 60 s. Record `pausedUntil` in `/api/sync-status`.
+- **Auth-failure circuit breaker.** Two consecutive `401`s suspend both timers and set `health.earthranger = "unauthorized"` until the next manual `/api/cache-refresh`. Prevents log spam on an expired token.
+- **Per-cycle request budget.** Soft cap of `{list:50, patrol:200, track:100}` per deep-sync; cycle aborts cleanly when exceeded and continues next tick.
+- **Health degradation tier.** `/api/health` returns `degraded` (not `ok`) when `lastError` is non-null and younger than `2 × DEEP_SYNC_INTERVAL_MS`.
+
+### 7.2.4 What the client deliberately does NOT do
+
+- **No request coalescing.** Two near-simultaneous `/api/patrol-tracks?id=X` calls produce one cache lookup; the second is a hit only if the first finished. There is no in-flight de-dup.
+- **No client-side rate limiting of inbound HTTP.** A burst of dashboard users could each trigger their own track fetches against ER. Acceptable for ≤10 users.
+- **No queueing.** If ER is slow, the active-check tick may overlap with the next deep-sync tick; the mutex resolves the collision by skipping, not queuing.
+
+---
+
+## 7.3 Failure Modes & Recovery
+
+The system is designed to **fail open**: the cache and the UI remain usable when EarthRanger is unavailable. The dashboard's "Refresh Cache" button surfaces errors without throwing the UI.
+
+| Failure | Symptom | Auto-Recovery | Manual Recovery |
+|---|---|---|---|
+| EarthRanger unreachable (DNS / network down) | `/api/health` → `unreachable`; `lastError` updates each tick | Next tick retries on schedule | Fix network; sync resumes silently |
+| TLS handshake failure | `lastError` mentions `CERT_*` or `EPROTO` | None | Verify CA / cert pinning at proxy |
+| `401 Unauthorized` (token expired / wrong) | `lastError` contains `401`; cache stale | None | Rotate token in `.env.local`; `docker compose restart` |
+| `403 Forbidden` (token lacks scope) | Some endpoints work, others fail | None | Request elevated token from ER admin |
+| `404 Not Found` on patrol GET | Single patrol fails refresh; cycle continues | Next cycle retries | None usually needed; investigate if persistent |
+| `429 Too Many Requests` | Cycle fails; next tick retries — risk of thrash | None (currently) | Raise `ACTIVE_CHECK_INTERVAL_MS` and `DEEP_SYNC_INTERVAL_MS`; lower `TRACK_FETCH_CONCURRENCY` |
+| `500/502/503/504` from ER | Cycle fails; logged to `lastError` | Next tick retries | Wait or escalate to ER ops |
+| Request timeout (`AbortError`) | Cycle fails for affected request | Next tick retries | Raise `ER_TIMEOUT_MS` if persistent |
+| Empty cache on first boot | Dashboard shows 0 patrols momentarily | Deep-sync runs on startup; full fill ≤ several hours | Run `npm run cache:backfill` for instant fill |
+| Corrupt `patrol-cache.json` | `loadCache()` returns empty cache and overwrites | Self-healing per §1 rule 11 | Inspect `lastError`; usually no action |
+| Disk full (`ENOSPC`) | All writes throw; every cycle fails | None — wedged until disk free | Free space on host volume; sync resumes |
+| Partial track file (rare race) | `readTrack` JSON-parse fails | Treated as missing; refetched next cycle | None |
+| Subject has no GPS data | `/api/patrol-tracks` returns empty `features` | n/a | UI shows "No GPS data" empty state |
+| EarthRanger schema drift — new field added | Stored verbatim; cache normalizer ignores unknowns | Forward-compatible | None |
+| EarthRanger schema break — field removed | Frontend renders blanks for that column | None | Patch the accessor with optional chaining |
+| Container OOM / restart | In-memory caches (track TTL, km) lost | Auto-restart per compose; rehydrate on next request | None |
+
+**Diagnostic command cheat sheet:**
+
+```bash
+# Health + ER reachability
+curl localhost:41739/api/health
+
+# Sync engine state (lastError is the key field)
+curl localhost:41739/api/sync-status | jq '.lastError, .lastDeepSync, .cache'
+
+# Container logs since last restart
+docker compose logs --since 1h earthranger-reporting-tool
+
+# Cache size on host
+du -sh data/patrol-cache.json data/patrol-tracks/
+
+# Force a deep-sync now
+curl -X POST localhost:41739/api/cache-refresh | jq
+```
+
+---
+
 ## 8. Local Patrol Cache (`lib/patrol-cache.js`)
 
 File: `${PATROL_CACHE_PATH}` (compose default `/app/data/patrol-cache.json`).
@@ -828,3 +1031,135 @@ When asked to "rebuild this app" using this spec:
 10. Build & run with `docker compose up --build` and confirm the dashboard is reachable on `:41739`.
 
 **Do not invent features outside this spec.** The product is finished as described; new requirements must come through the user.
+
+---
+
+## 22. Operational Considerations
+
+Things that are not features but determine whether the app stays alive in production. An AI rebuilding from this spec must read this section before declaring the rebuild "done".
+
+### 22.1 Time & Time Zones
+
+- All ISO timestamps are stored, compared, and transmitted in **UTC**.
+- Local rendering happens at the view layer via `Intl.DateTimeFormat` / `toLocaleString` using the **browser's** zone — typically `Asia/Manila` (UTC+8) for the ops team.
+- The "current week" default range (Monday–Sunday) is computed in **local browser time**, NOT UTC. A Monday 00:00 in Manila is `Sunday 16:00 UTC` in the API query — this is intentional so the user's "this week" feels right, at the cost of slight cross-day misalignment for non-Manila users.
+- The Philippines does not observe DST, so day boundaries are stable. If deployed elsewhere, audit `getMonthWeekPeriods`, `setDefaultDateRange`, and the weekly/monthly/annual period builders.
+- **Track time math uses `Math.abs(t1 - t0)`** (Constitution rule §1.9) because EarthRanger returns track points **newest-first** so adjacent time deltas can be negative. Every new piece of track math must comment this assumption.
+- All `Date.parse` inputs must be ISO 8601 with explicit zone (`Z` or `±HH:MM`). Loose strings like `"2026-05-15"` parse as local midnight — never write them server-side.
+
+### 22.2 Security Model
+
+- **No app-level authentication.** Anyone with TCP access to port 41739 can:
+  - View all patrol data, all GPS tracks, all municipality boundaries.
+  - Call `POST /api/patrols` (creates ER patrols) and `PATCH /api/patrols-update` (edits ER patrols) — these proxy to ER with the server's token, so an attacker on the LAN can mutate ER data using ER's credentials.
+  - Force `POST /api/cache-refresh` (cheap DoS vector — every call schedules ER work).
+- The deployment threat model assumes the port is reachable **only over a trusted internal network or VPN**. Do not expose 41739 to the public internet.
+- **The only secret in the system** is the EarthRanger credential set in `.env.local`. That file MUST NOT be committed (already `.gitignore`'d) and MUST NOT be baked into the Docker image (compose uses `env_file:`, not `ENV`).
+- `data/patrol-cache.json` and `data/patrol-tracks/*` contain operational location data of rangers and protected sites; treat the host volume as **sensitive** (filesystem perms `0700` on `data/` is appropriate).
+- No CSRF protection on mutating endpoints — by design, because there is no auth and the threat model is "trusted network". If a public-facing deployment is ever required, the correct order is: (1) put a reverse proxy with auth in front, (2) add CSRF tokens to mutating endpoints, (3) add per-origin CORS allowlist. Do NOT bolt auth into the app first.
+- No CORS headers are set; browser same-origin policy is the only protection against cross-site fetches.
+- Logs may include patrol titles and IDs — they are operational, not classified, but should not be shipped to a public log aggregator.
+
+### 22.3 Data Growth & Capacity
+
+Empirical sizing observed in the Blue Alliance deployment (Mindoro + Palawan, ~30 active patrols/week, ~1500 patrols/year):
+
+| Artifact | Per-unit | Annual estimate | 5-year ceiling |
+|---|---|---|---|
+| Patrol cache entry | 3–8 KB JSON | 5–12 MB | 25–60 MB |
+| Track file | 30–80 KB | 50–120 MB | 250–600 MB |
+| Track index entry | ~200 B | 0.3 MB | 1.5 MB |
+| `data/` total | — | ~150 MB/year | **~3 GB** |
+
+Provision the host volume with **≥5 GB headroom**. Monitor `du -sh data/` from cron or a smoke check.
+
+There is **no built-in archival or pruning.** To downsize manually:
+
+```bash
+# Remove track files older than N days; sync engine will not refetch closed patrols
+find data/patrol-tracks/ -mtime +365 -delete
+# (operator must then prune data/patrol-tracks-index.json by hand)
+```
+
+The in-process caches (`patrolTracksHandler`'s 10-minute TTL Map, `patrolKilometersHandler`'s unbounded Map) have no eviction beyond TTL. RSS grows with active table use but resets on container restart — acceptable because the container is small (≤200 MB RSS observed).
+
+### 22.4 Backup & Restore
+
+- The entire state is captured by tarring `data/`:
+  ```bash
+  tar czf backup-$(date +%F).tgz data/
+  ```
+- Restore: `docker compose down`, replace `data/` from tarball, `docker compose up -d`.
+- A nightly snapshot job is recommended **on the host, not in-app**:
+  ```cron
+  0 2 * * * cd /opt/blue-alliance && tar czf /backups/era-$(date +\%F).tgz data/ && find /backups -name 'era-*.tgz' -mtime +30 -delete
+  ```
+- No DR replication is built in. The cache is rebuildable from EarthRanger via `npm run cache:backfill`, so worst-case recovery is "restart with empty `data/` and backfill" — hours to days depending on history depth.
+- The patrol-cache file format is `version: 1`. If a future change bumps it, the backup/restore step does NOT need a migration (the normalizer self-heals); a downgrade does require restoring from the matching backup.
+
+### 22.5 Observability
+
+- Server logging: `console.log` / `console.error` only, collected by `docker compose logs -f earthranger-reporting-tool`.
+- **`/api/sync-status` is the canonical liveness probe.** A healthy system has `lastDeepSync` within the last 10–15 minutes and `lastError === null`.
+- **No metrics endpoint, no Prometheus exporter, no structured logging.** This is intentional (zero-deps rule). If observability is needed later, the correct retrofit is a single ~50-line `pino`-style structured logger inlined into `lib/log.js` rather than adding a runtime dep.
+- The dashboard surfaces sync errors only via the "Refresh Cache" button's response. A future iteration should bind a small status pill to `/api/sync-status` so an operator notices `lastError` without clicking.
+- For external uptime monitoring, hit `/api/health` from your monitoring system. It never throws and returns `200` with a status string — alert on `earthranger !== "ok"`.
+
+### 22.6 Browser Support
+
+- **Target:** latest two versions of Chrome, Edge, Firefox, Safari.
+- The app uses `fetch`, `Intl.DateTimeFormat`, ES2020+ (`?.`, `??`, top-level `await` is NOT used), and Leaflet 1.9.4.
+- **Mobile / tablet is not a target.** The patrol-index table assumes a desktop viewport (≥1280 px). It works on tablets in landscape but is not pleasant.
+- **Printing:** the report tabs assume A4 / Letter / Legal sizes via `@page { size: ...; margin: 0; }`. Verified in Chromium print preview. Firefox renders the same. Safari has minor margin quirks — acceptable.
+- **No offline support / no service worker / no PWA manifest.** Browser must be online to reach the same-origin API.
+- **No accessibility audit.** The app does not target WCAG AA. Color choices have not been checked for contrast against the cyan boundary lines.
+
+### 22.7 Concurrency & Multi-User
+
+- The server is **single-process Node**. Multiple concurrent dashboard users share the same cache file, the same in-process TTL/km caches, and the same sync engine state.
+- All disk writes serialize through `writePromise` (patrol cache) and per-file atomic temp+rename (tracks). A burst of concurrent `POST /api/cache-refresh` calls is safe but pointless — the sync mutex collapses them to one.
+- There is no per-user state — no sessions, no cookies, no preferences. Every browser sees the same filters' initial defaults (`current week`) and the same data.
+- Designed for ≤10 simultaneous users on a LAN. Beyond ~30 concurrent dashboards, the in-process km cache (unbounded) will start to dominate RSS — bound it with an LRU at that point.
+
+### 22.8 Performance Ceilings (empirical)
+
+- **Filtering / table render:** tested up to ~20 000 cached patrols. Filtering is in-memory and fast; DOM cost dominates above ~2 000 rendered rows, which is why the table paginates to `page_size`.
+- **Area-covered aggregation:** dominated by track parse time. 1 000 patrols × ~500 points each ≈ 1.5 s on a recent laptop. Acceptable for the few-per-day report cadence.
+- **Cold start to first usable dashboard:** <2 s when cache is warm, ~5–10 s during the on-startup deep-sync.
+- **Map render:** Leaflet handles ~5 000 polyline points smoothly; beyond that, simplify (Douglas-Peucker) before rendering.
+
+### 22.9 Code Modification Guardrails
+
+These are *additional* rules on top of the §1 Build Constitution and §18 Governance, specifically about touching live-production code:
+
+1. **Never edit `data/patrol-cache.json` by hand on a running container.** The serialized `writePromise` may overwrite your edit. Either stop the container or use `clearCache()` via a one-off script.
+2. **Never bump the cache `version` without writing the migrator in `loadCache()`.** The normalizer is intentionally tolerant, but version skew across restarts is the one thing that can silently lose data.
+3. **Never change `getPatrolKey`** without a migration that re-keys every existing entry. Patrol IDs are used as filenames in `data/patrol-tracks/`.
+4. **Never block the event loop on disk I/O.** All file writes go through `fs/promises`. A synchronous `fs.writeFileSync` in any handler will tank concurrent requests.
+5. **Never silently swallow EarthRanger errors.** Always log them and stamp `lastError`. The dashboard relies on `/api/sync-status` to see them.
+6. **Never call `fetch` directly from a handler.** All ER traffic goes through `lib/earthranger.js` so auth/timeout/error normalization is consistent.
+
+### 22.10 Things Explicitly Out of Scope (do not propose)
+
+- Sign-in / user accounts / multi-tenancy.
+- Cloud database (SQLite, Postgres, KV, S3, etc.). Filesystem is the database by design (Constitution §1.5).
+- Bundlers, frameworks, TypeScript compilation, or any build step beyond `docker compose build`.
+- Vercel, Cloudflare Workers, Edge Functions, or any serverless target. See memory `project_deployment.md`.
+- WebSockets / SSE / long-polling. The 30-second `autoRefreshPatrols` is the only liveness mechanism.
+- Push notifications, email, SMS, or any outbound communication.
+- A REST API for external consumers. All endpoints under `/api/*` are private to the dashboard.
+
+If a future requirement crosses one of these lines, it is a **new product**, not an extension of this one — fork or replace, do not bolt on.
+
+---
+
+## 23. Document Maintenance
+
+This spec is the single source of truth and must remain accurate as the code evolves. Maintenance rules:
+
+1. **When the code changes a load-bearing fact** (a constitution rule, an API contract, a cache shape, a sync interval, a default municipality, an external dependency) — update SPEC.md in the same PR. The PR title prefix `feat:` / `refactor:` implies "spec may need an update"; the reviewer checks.
+2. **When the spec is wrong but the code is right** — update the spec, not the code. The code is the runtime truth; the spec describes the intent.
+3. **Section numbering is stable.** New sections are appended (§24, §25, …). Cross-references like "§7.2" must keep pointing at the same content; if a section is rewritten, edit in place, do not renumber.
+4. **Subsections may be added freely** (§7.4, §22.11, …) without renumbering siblings.
+5. **A change to the Build Constitution (§1)** requires explicit user sign-off in the PR description — these 12 rules are the project's identity.
+6. **Memory entries** (`memory/MEMORY.md` and its linked files) take precedence over SPEC.md when they disagree, because they are written closer to the moment of change. After resolving a disagreement, update SPEC.md to match the memory's truth, then the memory entry can be retired or marked "absorbed into spec".
